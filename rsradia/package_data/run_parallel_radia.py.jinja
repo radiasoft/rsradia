@@ -1,7 +1,7 @@
 import os
 import radia
 rank = radia.UtiMPI('on')
-print("I am rank:", rank)
+
 relaxation_args = [
 {% for value in _RELAXATION_ARGS %}
     {{value}}{% if not loop.last %},{% endif %}
