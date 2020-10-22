@@ -7,6 +7,7 @@ u""":mod:`rsradia` package
 from __future__ import absolute_import, division, print_function
 import pkg_resources
 from pykern import pkio
+from pykern import pkresource
 
 try:
     # We only have a version once the package is installed.
@@ -16,7 +17,7 @@ except pkg_resources.DistributionNotFound:
 # TODO: Not sure how to handle dump paths. Currently just write and run in the notebook's directory.
 _PARALLEL_RADIA_TEMPLATE = 'run_parallel_radia.py.jinja'
 _PARALLEL_RADIA_SCRIPT = _PARALLEL_RADIA_TEMPLATE.rsplit('.', 1)[0]
-_TEMPLATE_PATH = pkio.py_path('../templates')
+_TEMPLATE_PATH = pkio.py_path(pkresource.filename(''))
 _DEFAULT_SOLVER = 'RlxPre'
 _NOTEBOOK_DUMP_PATH = './temp_mag.bin'
 _SCRIPT_DUMP_PATH = './solver_result.bin'  # TODO: This has to go to both mpi_solve and the template
