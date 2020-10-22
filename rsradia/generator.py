@@ -2,8 +2,8 @@ import jinja2
 import os
 from pykern import pkio
 
-from jupyter_radia import _PARALLEL_RADIA_TEMPLATE, _PARALLEL_RADIA_SCRIPT, _TEMPLATE_PATH
-from jupyter_radia.jupyter_solve import _SCRIPT_DUMP_PATH, _NOTEBOOK_DUMP_PATH
+from rsradia import _PARALLEL_RADIA_TEMPLATE, _PARALLEL_RADIA_SCRIPT, _TEMPLATE_PATH
+from rsradia import _SCRIPT_DUMP_PATH, _NOTEBOOK_DUMP_PATH
 
 # TODO: Could be more flexible about how solver arguments may be provided
 
@@ -19,6 +19,11 @@ def _check_solver_setup(solver, args):
     assert len(args) == len(_SOLVERS[solver]), f"Incorrect number arguments for {solver}. " + \
                                                "Expected {exp} but received {rec}.".format(exp=len(_SOLVERS[solver]),
                                                                                            rec=len(args))
+    for i in range(len(args)):
+        if type(args[i]) == str:
+            args[i] = "\"{}\"".format(args[i])
+            
+    return args
 
 
 def generate_script(solver, args):
@@ -28,7 +33,7 @@ def generate_script(solver, args):
     :param args: (list) List of arguments to configure the solver.
     :return: None
     """
-    _check_solver_setup(solver, args)
+    args = _check_solver_setup(solver, args)
 
     template_loader = jinja2.FileSystemLoader(searchpath=_TEMPLATE_PATH)
     template_env = jinja2.Environment(loader=template_loader)

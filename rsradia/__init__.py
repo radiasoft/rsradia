@@ -21,5 +21,4 @@ _TEMPLATE_PATH = pkio.py_path(pkresource.filename(''))
 _DEFAULT_SOLVER = 'RlxPre'
 _NOTEBOOK_DUMP_PATH = './temp_mag.bin'
 _SCRIPT_DUMP_PATH = './solver_result.bin'  # TODO: This has to go to both mpi_solve and the template
-_SOLVE_SCRIPT = 'run_magnet_solve.py'
 _MPI = 'mpiexec'

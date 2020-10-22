@@ -1,7 +1,7 @@
 import os
 import radia
 rank = radia.UtiMPI('on')
-
+print("I am rank:", rank)
 relaxation_args = [
 {% for value in _RELAXATION_ARGS %}
     {{value}}{% if not loop.last %},{% endif %}
@@ -23,8 +23,7 @@ relaxation = radia.{{ _RELAXATION_COMMAND }}(interaction_matrix, *relaxation_arg
 {% endif %}
 
 if rank == 0:
-    output_path = os.path.join('{{ _OUTPUT_DUMP_FILE }}', 'solver_result.bin')
-    with open(output_path, 'wb') as ff:
+    with open("{{ _OUTPUT_DUMP_FILE }}", 'wb') as ff:
         dmp = radia.UtiDmp(magnet_group, 'bin')
         magnet_data = ff.write(dmp)
     print('Finished relaxation')

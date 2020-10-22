@@ -1,7 +1,7 @@
 import subprocess
 import radia
-from jupyter_radia import generator
-from rsradia import _NOTEBOOK_DUMP_PATH, _SCRIPT_DUMP_PATH, _SOLVE_SCRIPT, _MPI
+from rsradia import generator
+from rsradia import _NOTEBOOK_DUMP_PATH, _SCRIPT_DUMP_PATH, _PARALLEL_RADIA_SCRIPT, _MPI
 
 
 def _create_dump(path, radia_obj):
@@ -12,7 +12,7 @@ def _create_dump(path, radia_obj):
 def _subprocess_solve(mpi_command, script, load_dump):
     """Run solve through MPI and return output from the shell"""
     # TODO: This command can probably be adjusted to make the source portion unnecessary
-    command = f'source ~/.bashrc && {mpi_command} -n 4 python {script} {load_dump}'
+    command = f'{mpi_command} -n 4 python {script} {load_dump}'
     cmd = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = cmd.communicate()
 
@@ -69,7 +69,7 @@ def mpi_solve(radia_obj, solver_args, solver='RlxAuto'):
 
     _create_dump(_NOTEBOOK_DUMP_PATH, radia_obj)
 
-    out, err = _subprocess_solve(_MPI, _SOLVE_SCRIPT, _NOTEBOOK_DUMP_PATH)
+    out, err = _subprocess_solve(_MPI, _PARALLEL_RADIA_SCRIPT, _NOTEBOOK_DUMP_PATH)
 
     solve_complete = _check_solve_output(out, err)
 
