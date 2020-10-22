@@ -19,11 +19,12 @@ def _check_solver_setup(solver, args):
     assert len(args) == len(_SOLVERS[solver]), f"Incorrect number arguments for {solver}. " + \
                                                "Expected {exp} but received {rec}.".format(exp=len(_SOLVERS[solver]),
                                                                                            rec=len(args))
+    return_args = args.copy()
     for i in range(len(args)):
         if type(args[i]) == str:
-            args[i] = "\"{}\"".format(args[i])
+            return_args[i] = "\"{}\"".format(args[i])
             
-    return args
+    return return_args
 
 
 def generate_script(solver, args):
