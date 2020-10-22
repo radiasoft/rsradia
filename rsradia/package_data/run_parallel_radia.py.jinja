@@ -1,0 +1,31 @@
+import os
+import radia
+rank = radia.UtiMPI('on')
+
+relaxation_args = [
+{% for value in _RELAXATION_ARGS %}
+    {{value}}{% if not loop.last %},{% endif %}
+{% endfor %}
+]
+binary_dump_file = '{{ _INPUT_DUMP_FILE }}'
+
+with open(binary_dump_file, 'rb') as ff:
+    binary_data = ff.read()
+magnet_group = radia.UtiDmpPrs(binary_data)
+if rank == 0:
+    print('Starting relaxation')
+
+{% if _RELAXATION_COMMAND == 'Solve' %}
+relaxation = radia.{{ _RELAXATION_COMMAND }}(magnet_group, *relaxation_args)
+{% else %}
+interaction_matrix = radia.RlxPre(magnet_group)
+relaxation = radia.{{ _RELAXATION_COMMAND }}(interaction_matrix, *relaxation_args)
+{% endif %}
+
+if rank == 0:
+    output_path = os.path.join('{{ _OUTPUT_DUMP_FILE }}', 'solver_result.bin')
+    with open(output_path, 'wb') as ff:
+        dmp = radia.UtiDmp(magnet_group, 'bin')
+        magnet_data = ff.write(dmp)
+    print('Finished relaxation')
+radia.UtiMPI('barrier')

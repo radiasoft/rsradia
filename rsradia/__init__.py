@@ -6,9 +6,19 @@ u""":mod:`rsradia` package
 """
 from __future__ import absolute_import, division, print_function
 import pkg_resources
+from pykern import pkio
 
 try:
     # We only have a version once the package is installed.
     __version__ = pkg_resources.get_distribution('rsradia').version
 except pkg_resources.DistributionNotFound:
     pass
+# TODO: Not sure how to handle dump paths. Currently just write and run in the notebook's directory.
+_PARALLEL_RADIA_TEMPLATE = 'run_parallel_radia.py.jinja'
+_PARALLEL_RADIA_SCRIPT = _PARALLEL_RADIA_TEMPLATE.rsplit('.', 1)[0]
+_TEMPLATE_PATH = pkio.py_path('../templates')
+_DEFAULT_SOLVER = 'RlxPre'
+_NOTEBOOK_DUMP_PATH = './temp_mag.bin'
+_SCRIPT_DUMP_PATH = './solver_result.bin'  # TODO: This has to go to both mpi_solve and the template
+_SOLVE_SCRIPT = 'run_magnet_solve.py'
+_MPI = 'mpiexec'
