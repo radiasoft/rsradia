@@ -56,7 +56,7 @@ def _create_point_table(pole_width, pole_separation, pole_height, top_height, le
         assert intersect_y > ymin and intersect_y < ymax, "Chamfer cut does not intersect pole wall"
         
         point_table[7] = p8
-        point_table.insert(6, [intersect_x, intersect_y])
+        point_table.insert(7, [intersect_x, intersect_y])
     
     if np.any([fillet_base, fillet_height, fillet_radius]):
         a = p8
