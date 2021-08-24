@@ -30,3 +30,20 @@ def get_arc_points(x1, x2, center, radius, N=15):
     y = (- b - np.sqrt(b**2 - 4 * a *c )) / (2 * a)
     
     return x, y 
+
+def get_intersection(line1_p1, line1_p2, line2_p1, line2_p2):
+    """find the intersection of two infinite lines defined by two points on each line"""
+    x1, y1 = line1_p1
+    x2, y2 = line1_p2
+    x3, y3 = line2_p1
+    x4, y4 = line2_p2
+    
+    D = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    
+    Px = (x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)
+    Px /= D
+    
+    Py = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)
+    Py /= D
+    
+    return Px, Py

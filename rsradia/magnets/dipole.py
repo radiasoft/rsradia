@@ -4,7 +4,8 @@ from rsradia.magnets import geometry
 
 TRIANGLE_MIN_SIZE, TRIANGLE_MAX_SIZE = 0.5, 1.0
 
-def _create_point_table(pole_width, pole_separation, pole_height, top_height, leg_width, gap_height, slope_base=0.0, fillet_base=None, fillet_height=None, fillet_radius=None):
+def _create_point_table(pole_width, pole_separation, pole_height, top_height, leg_width, gap_height, 
+                        bevel_base=0.0, chamfer_base=None, chamfer_angle=None, fillet_base=None, fillet_height=None, fillet_radius=None):
     """
     Construct 2D slice of an H-dipole in the YZ plane.
 
@@ -24,6 +25,9 @@ def _create_point_table(pole_width, pole_separation, pole_height, top_height, le
     :return:
     """
     assert np.any([fillet_base, fillet_height, fillet_radius]) == np.all([fillet_base, fillet_height, fillet_radius]), "fillet height, base, and radius must all be defined"
+    assert np.any([chamfer_base, chamfer_angle]) == np.all([chamfer_base, chamfer_angle]), "chamfer base and angle must both be defined"
+    if chamfer_angle:
+        assert chamfer_angle > 0. and chamfer_angle < 90., "Chamfer angle must between 0 and 90 degrees"
     
     p1 = [0.0, top_height + pole_height + gap_height]
     p2 = [pole_width + pole_separation, top_height + pole_height + gap_height]
@@ -34,11 +38,25 @@ def _create_point_table(pole_width, pole_separation, pole_height, top_height, le
 
     p6 = [pole_width + pole_separation, pole_height + gap_height]
     p7 = [pole_width, pole_height + gap_height]
-    p8 = [pole_width - slope_base, gap_height]
-
+    p8 = [pole_width - bevel_base, gap_height]
+        
     p_middle = [0.0, gap_height]
 
     point_table = [p1, p2, p3, p4, p5, p6, p7, p8, p_middle]
+    
+    # if a chamfer is applied on top of a bevel it is taken relative to the pole width after the bevel
+    if chamfer_base:
+        p8_start = p8.copy()
+        p8 = [p8[0] - chamfer_base, p8[1]]
+        # Intersection will need to be between the vertical bounds of p7 and p8 to be valid
+        ymin, ymax = p8[1], p7[1]
+        # Get a point on the chamfer cut line to find intersection with existing wall
+        prox_x, prox_y = p8[0] + np.cos(np.pi * chamfer_angle / 180.), p8[1] + np.sin(np.pi * chamfer_angle / 180.)
+        intersect_x, intersect_y = geometry.get_intersection(p8_start, p7, p8, (prox_x, prox_y))
+        assert intersect_y > ymin and intersect_y < ymax, "Chamfer cut does not intersect pole wall"
+        
+        point_table[7] = p8
+        point_table.insert(6, [intersect_x, intersect_y])
     
     if np.any([fillet_base, fillet_height, fillet_radius]):
         a = p8
