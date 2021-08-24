@@ -1,7 +1,10 @@
 import radia as rad
+import numpy as np
+from rsradia.magnets import geometry
 
+TRIANGLE_MIN_SIZE, TRIANGLE_MAX_SIZE = 0.5, 1.0
 
-def _create_point_table(pole_width, pole_separation, pole_height, top_height, leg_width, gap_height):
+def _create_point_table(pole_width, pole_separation, pole_height, top_height, leg_width, gap_height, slope_base=0.0, fillet_base=None, fillet_height=None, fillet_radius=None):
     """
     Construct 2D slice of an H-dipole in the YZ plane.
 
@@ -15,8 +18,13 @@ def _create_point_table(pole_width, pole_separation, pole_height, top_height, le
     :param top_height: (float)
     :param leg_width: (float)
     :param gap_height: (float)
+    :fillet_base: (float)
+    :fillet_height: (float)
+    :fillet_radius: (float)
     :return:
     """
+    assert np.any([fillet_base, fillet_height, fillet_radius]) == np.all([fillet_base, fillet_height, fillet_radius]), "fillet height, base, and radius must all be defined"
+    
     p1 = [0.0, top_height + pole_height + gap_height]
     p2 = [pole_width + pole_separation, top_height + pole_height + gap_height]
 
@@ -26,11 +34,20 @@ def _create_point_table(pole_width, pole_separation, pole_height, top_height, le
 
     p6 = [pole_width + pole_separation, pole_height + gap_height]
     p7 = [pole_width, pole_height + gap_height]
-    p8 = [pole_width, gap_height]
+    p8 = [pole_width - slope_base, gap_height]
 
     p_middle = [0.0, gap_height]
 
     point_table = [p1, p2, p3, p4, p5, p6, p7, p8, p_middle]
+    
+    if np.any([fillet_base, fillet_height, fillet_radius]):
+        a = p8
+        b = [p8[0] + fillet_base, p8[1] + fillet_height]
+        center = geometry.get_circle_center(a, b, fillet_radius)
+        # Define counter-clockwise list of points from a to b
+        arc_points = [[xp, yp] for xp, yp in zip(*geometry.get_arc_points(a[0], b[0], center, fillet_radius, N=5))]
+        # Insert clockwise list of points from a to b between p7 and p8
+        point_table = [list(pt) for pt in np.insert(np.array(point_table), 7, arc_points[:1:-1], axis=0)]
 
     return point_table[::-1]
 
@@ -58,7 +75,7 @@ def _get_all_points_bottom(table):
     return coordinates[::-1]
 
 
-def create_pole(coordinates, center, length, mode=0, triangle_min_size=0.5, triangle_max_size=1.0):
+def create_pole(coordinates, center, length, mode=0, triangle_min_size=TRIANGLE_MIN_SIZE, triangle_max_size=TRIANGLE_MAX_SIZE):
     """
     Form geometry for the full pole piece of an H-dipole using radia.ObjMltExtTri.
 
@@ -97,7 +114,7 @@ def make_racetrack_coil(center, radii, sizes, segments=15, current=1):
 
 
 def make_dipole(pole_dimensions, center, length, current=-10000,
-                trimesh_mode=0, longitudinal_divisions=4):
+                trimesh_mode=0, triangle_min_size=TRIANGLE_MIN_SIZE, triangle_max_size=TRIANGLE_MAX_SIZE, longitudinal_divisions=4):
     """
     Construct a complete H-dipole made of iron.
     :param pole_dimensions: (dict) Parameters describing geometry of pole piece. See `_create_point_table`.
@@ -117,8 +134,8 @@ def make_dipole(pole_dimensions, center, length, current=-10000,
     top_coodinates = _get_all_points_top(table_quadrant_one)
     bottom_coordinates = _get_all_points_bottom(top_coodinates)
 
-    top_pole = create_pole(top_coodinates, center, length, mode=trimesh_mode)
-    bottom_pole = create_pole(bottom_coordinates, center, length, mode=trimesh_mode)
+    top_pole = create_pole(top_coodinates, center, length, mode=trimesh_mode, triangle_min_size=triangle_min_size, triangle_max_size=triangle_max_size)
+    bottom_pole = create_pole(bottom_coordinates, center, length, mode=trimesh_mode, triangle_min_size=triangle_min_size, triangle_max_size=triangle_max_size)
 
     # Material for the poles (uses Iron)
     ironmat = rad.MatSatIsoFrm([20000, 2], [0.1, 2], [0.1, 2])
