@@ -59,8 +59,9 @@ def _create_point_table(pole_width, pole_separation, pole_height, top_height, le
         point_table.insert(7, [intersect_x, intersect_y])
     
     if np.any([fillet_base, fillet_height, fillet_radius]):
-        a = p8
-        b = [p8[0] + fillet_base, p8[1] + fillet_height]
+        a = [p8[0] - fillet_base, p8[1]]
+        point_table[7 + 1 * (chamfer_base is not None)] = a
+        b = [p8[0], p8[1] + fillet_height]
         center = geometry.get_circle_center(a, b, fillet_radius)
         # Define counter-clockwise list of points from a to b
         arc_points = [[xp, yp] for xp, yp in zip(*geometry.get_arc_points(a[0], b[0], center, fillet_radius, N=5))]
