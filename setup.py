@@ -13,6 +13,7 @@ pksetup.setup(
     description='rsradia',
     install_requires=[
         'pykern',
+        'trimesh',
     ],
     license='http://www.apache.org/licenses/LICENSE-2.0.html',
     url='https://github.com/radiasoft/rsradia',
