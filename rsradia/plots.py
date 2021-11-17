@@ -2,7 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 import trimesh
 
-def plot_mesh(mesh, wireframe=True, incenters=False, nonconvex_faces=False):
+def plot_mesh(mesh, wireframe=True, incenters=False, nonconvex_faces=False, scatter_points=None):
     """Plot a mesh from Trimesh"""
     data = []
     
@@ -21,6 +21,19 @@ def plot_mesh(mesh, wireframe=True, incenters=False, nonconvex_faces=False):
     if nonconvex_faces:
         data += [d for d in generate_nonconvex_vertices(mesh)]
     
+    if scatter_points:
+        X, Y, Z = scatter_points['X'], scatter_points['Y'], scatter_points['Z']
+        s = go.Scatter3d(
+                     x=X,
+                     y=Y,
+                     z=Z,
+                     mode='markers',
+                     showlegend=False,
+                     line=dict(color='rgb(40,60,10)', width=2)
+        )
+        data += [s, ]
+        
+    
     fig = go.Figure(data=data)
     
     fig.update_layout(
@@ -34,6 +47,7 @@ def plot_mesh(mesh, wireframe=True, incenters=False, nonconvex_faces=False):
             t=100,
             pad=4
         ),
+        scene=dict(aspectmode='data')
 
     )
                           
