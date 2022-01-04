@@ -147,7 +147,8 @@ def make_dipole(pole_dimensions, center, length, current=-10000,
     """
     # coil_factor increases coil size slightly to accommodate sharp corners of pole piece
     coil_length_factor = 1.005
-    coil_height_factor = 2. / 3.
+    coil_height_factor = 3. / 4.
+    coil_or_factor = 0.85
     # Geometry for the poles
     table_quadrant_one = _create_point_table(**pole_dimensions)
     top_coodinates = _get_all_points_top(table_quadrant_one)
@@ -162,14 +163,15 @@ def make_dipole(pole_dimensions, center, length, current=-10000,
     rad.MatApl(bottom_pole, ironmat)
 
     # Coils
+    coil_outer_radius = pole_dimensions['pole_separation'] * coil_or_factor
     top_coil = make_racetrack_coil(center=[0, 0.0, pole_dimensions['gap_height'] + pole_dimensions['pole_height'] / 2.],
-                                   radii=[0.1, 0.4],
+                                   radii=[0.1, coil_outer_radius],
                                    sizes=[length * coil_length_factor, 
                                           pole_dimensions['pole_width'] * 2 * coil_length_factor, 
                                           pole_dimensions['pole_height'] * coil_height_factor],
                                    current=current)
     bottom_coil = make_racetrack_coil(center=[0, 0.0, -1. * (pole_dimensions['gap_height'] + pole_dimensions['pole_height'] / 2.)],
-                                      radii=[0.1, 0.4],
+                                      radii=[0.1, coil_outer_radius],
                                       sizes=[length * coil_length_factor, 
                                              pole_dimensions['pole_width'] * 2 * coil_length_factor, 
                                              pole_dimensions['pole_height'] * coil_height_factor],
