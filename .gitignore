@@ -56,6 +56,9 @@ coverage.xml
 # Django stuff:
 *.log
 
+# MacOS stuff
+.DS_Store
+
 # Sphinx documentation
 docs/_build/
 
