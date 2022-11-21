@@ -1,8 +1,8 @@
 ### integrators.py
-### Morgan Henderson, July 2022
-### A collection of numerical integrator functions
+### July 2022
+### A collection of numerical integrators
 
-from numpy import array, zeros
+from numpy import array, zeros, ceil
 
 # The 15-point Gauss-Kronrod quadrature integrator
 def KRON15(fun, bounds):
@@ -26,8 +26,8 @@ def KRON15(fun, bounds):
 # A simple Euler integrator
 def EULER(X0, bounds, dt, diffEq, *diffArgs):
     isScalar = isinstance(X0,(int,float))
-    N = int((bounds[1]-bounds[0])/dt)+1
-    
+    N = int(round(ceil((bounds[1]-bounds[0]))/dt))+1
+        
     # Intialize state scalar or vector
     X = zeros(N) if isScalar else zeros((N,)+X0.shape)
     X[0] = X0
@@ -46,7 +46,7 @@ def RK4(X0, bounds, dt, diffEq, *diffArgs):
     isScalar = isinstance(X0,(int,float))
 
     # Define integrator parameters
-    N = int((bounds[1]-bounds[0])/dt)+1
+    N = int(round(ceil((bounds[1]-bounds[0]))/dt))+1
     a = array([1/2,1/2,1])
     b = array([1/6, 1/3, 1/3, 1/6])
     c = a
@@ -77,7 +77,7 @@ def RK45(X0, bounds, dt, diffEq, *diffArgs):
     isScalar = isinstance(X0,(int,float))
 
     # Define integrator parameters
-    N = int((bounds[1]-bounds[0])/dt)+1
+    N = int(round(ceil(abs(bounds[1]-bounds[0]))/abs(dt)))+1
     a = [array([1/5]), array([3/40,9/40]), array([44/45, -56/15, 32/9]), \
         array([19372/6561, -25360/2187, 64448/6571, -212/729]), \
         array([9017/3168, -355/33, 46732/5247, 49/176, -5103/18656]), \
