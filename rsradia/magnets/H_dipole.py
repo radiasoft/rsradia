@@ -1,280 +1,230 @@
-### cube.py
+### H_dipole.py
 ### November 2022
-### A simple cubic ferromagnet wrapped with a racetrack coil
+### An H-dipole with a ferromagnetic yoke wrapped with racetrack coils
 
-from . import TRI_MIN_SIZE, TRI_MAX_SIZE
+from numpy import array, zeros
+from radia import Fld, ObjCnt, ObjMltExtTri, ObjDivMag, ObjRaceTrk, ObjDrwAtr, ObjM, ObjSetM, ObjGeoVol, UtiDel
+from jupyter_rs_radia import radia_viewer as rv
 
-class HDipole():
+from .. import MU0
+from . import TRI_MIN_SIZE, TRI_MAX_SIZE, ObjCntStufRec, UtiDelStuf
+
+class HDipole:
     '''
     An H-dipole steering magnet with a ferromagnetic yoke wrapped with racetrack coils
 
     parameters:
-        None
+        x_center: center point of the dipole in the x-direction
+        length: length of the dipole in the x-direction
+        pole_height: height of one-half of the yoke
+        pole_width: width of one-half of the yokke
+        pole_sep: horizontal separation between poles and yoke body
+        gap_height: vertical separation between poles and magnet center
+        top_height: height of yoke above/below poles
+        leg_width: width
+        coil_inner: the inner radius of each racetrack coil
+        coil_lfactor: coil length relative to yoke dimensions
+        coil_hfactor: coil height relative to yoke dimensions
+        coil_rfactor: coil outer radius relative to yoke dimensions
+        bevel_base: height of bevel on the yoke base
+        x_div: Number of divisions to make in the x-direction
+        mesh_mode: 0 -> polygon-based mesh, 1 -> triangle-based mesh
+        tri_min_size: minimum allowable size for triangular mesh elements
+        tri_max_size: maimum allowable size for triangular mesh elements
+        yoke_col: color assigned to the yokes
+        coil_col: color assigned to the racetrack coils
     '''
 
-    def __init__(self, pole_width, pole_separation, pole_height, top_height, leg_width, gap_height, bevel_base=0.0, 
-        chamfer_base=None, chamfer_angle=None, fillet_base=None, fillet_height=None, fillet_radius=None):
-
-        None
-
-    def _create_points(self):
-        None
-
-    
-
-
-
-
-def _create_point_table():
-    """
-    Construct 2D slice of an H-dipole in the YZ plane.
-
-    All distances are half-widths/lengths of the full magnet. Points are specified in the first quadrant and mirrored
-    to other quadrants later. The point list is returned in counter-clockwise order starting from the midpoint above
-    the gap center on the pole face.
-
-    :param pole_width: (float)
-    :param pole_separation: (float)
-    :param pole_height: (float)
-    :param top_height: (float)
-    :param leg_width: (float)
-    :param gap_height: (float)
-    :fillet_base: (float)
-    :fillet_height: (float)
-    :fillet_radius: (float)
-    :return:
-    """
-    assert np.any([fillet_base, fillet_height, fillet_radius]) == np.all([fillet_base, fillet_height, fillet_radius]), "fillet height, base, and radius must all be defined"
-    assert np.any([chamfer_base, chamfer_angle]) == np.all([chamfer_base, chamfer_angle]), "chamfer base and angle must both be defined"
-    if chamfer_angle:
-        assert chamfer_angle > 0. and chamfer_angle < 90., "Chamfer angle must between 0 and 90 degrees"
-    
-    p1 = [0.0, top_height + pole_height + gap_height]
-    p2 = [pole_width + pole_separation, top_height + pole_height + gap_height]
-
-    p3 = [pole_width + pole_separation + leg_width, gap_height + pole_height + top_height]
-    p4 = [pole_width + pole_separation + leg_width, 0.0]
-    p5 = [pole_width + pole_separation, 0.0]
-
-    p6 = [pole_width + pole_separation, pole_height + gap_height]
-    p7 = [pole_width, pole_height + gap_height]
-    p8 = [pole_width - bevel_base, gap_height]
+    def __init__(self, x_center, length, pole_height, pole_width, pole_sep, gap_height, top_height, leg_width, coil_inner,
+                 coil_lfactor=1.005, coil_hfactor=.75, coil_rfactor=0.85, bevel_base=0.0, x_div=4, coil_div=15, mesh_mode=0,
+                 name='H-Dipole', yoke_col=[0, 0.4, 0.8], coil_col=[0.2, 0.9, 0.6]):
         
-    p_middle = [0.0, gap_height]
-
-    point_table = [p1, p2, p3, p4, p5, p6, p7, p8, p_middle]
-    
-    # if a chamfer is applied on top of a bevel it is taken relative to the pole width after the bevel
-    if chamfer_base:
-        p8_start = p8.copy()
-        p8 = [p8[0] - chamfer_base, p8[1]]
-        # Intersection will need to be between the vertical bounds of p7 and p8 to be valid
-        ymin, ymax = p8[1], p7[1]
-        # Get a point on the chamfer cut line to find intersection with existing wall
-        prox_x, prox_y = p8[0] + np.cos(np.pi * chamfer_angle / 180.), p8[1] + np.sin(np.pi * chamfer_angle / 180.)
-        intersect_x, intersect_y = geometry.get_intersection(p8_start, p7, p8, (prox_x, prox_y))
-        assert intersect_y > ymin and intersect_y < ymax, "Chamfer cut does not intersect pole wall"
+        # Assign geometric parameters to class members
+        self._x_center = x_center
+        self._length = length
+        self._pole_height = pole_height
+        self._pole_width = pole_width
+        self._pole_sep = pole_sep
+        self._gap_height = gap_height
+        self._coil_inner = coil_inner
+        self._coil_lfactor = coil_lfactor
+        self._coil_hfactor = coil_hfactor
+        self._coil_rfactor = coil_rfactor
+        self._x_div = x_div
+        self._coil_div = coil_div
+        self._mesh_mode = mesh_mode
         
-        point_table[7] = p8
-        point_table.insert(7, [intersect_x, intersect_y])
-    
-    if np.any([fillet_base, fillet_height, fillet_radius]):
-        a = [p8[0] - fillet_base, p8[1]]
-        point_table[7 + 1 * (chamfer_base is not None)] = a
-        b = [p8[0], p8[1] + fillet_height]
-        center = geometry.get_circle_center(a, b, fillet_radius)
-        # Define counter-clockwise list of points from a to b
-        arc_points = [[xp, yp] for xp, yp in zip(*geometry.get_arc_points(a[0], b[0], center, fillet_radius, N=5))]
-        # Insert clockwise list of points from a to b between p7 and p8
-        point_table = [list(pt) for pt in np.insert(np.array(point_table), 7, arc_points[:1:-1], axis=0)]
-
-    return point_table[::-1]
-
-
-def _get_all_points_top(table):
-    """Reflect point table from `create_point_table` to quadrant 2 to form top of H-dipole"""
-
-    coordinates = []
-    for point in table:
-        if point[0] != 0.:
-            reflection = [-point[0], point[1]]
-            coordinates.append(reflection)
-    coordinates = table + coordinates[::-1]
-
-    return coordinates
-
-
-def _get_all_points_bottom(table):
-    """Reflect point table from `get_all_points_bottom` to quadrant 3 & 4 to form bottom of H-dipole"""
-    coordinates = []
-    for point in table:
-        reflection = [point[0], -point[1]]
-        coordinates.append(reflection)
-
-    return coordinates[::-1]
-
-
-def create_pole(coordinates, center, length, mode=0, triangle_min_size=TRIANGLE_MIN_SIZE, triangle_max_size=TRIANGLE_MAX_SIZE):
-    """
-    Form geometry for the full pole piece of an H-dipole using radia.ObjMltExtTri.
-
-    :param coordinates: (list) List of points defining the boundaries of the pole piece in the YZ plane.
-    :param center: (float) Center point of dipole in x (longitudinal center for beam frame).
-    :param length: (float) Length of the dipole in x
-    :param mode: (int) If 0 (default) then the pole piece is divisioned into polygons based on point ordering from
-    coordinate list. If != 0 then a Triangular mesh is automatically generated.
-    :param triangle_min_size: (float) Only used if mode != 0. Sets the minimum triangle area for automatic division.
-    :param triangle_max_size: (float) Only used if mode != 0. Sets the maximum triangle area for automatic division.
-    :return: Radia object containing top and bottom pole pieces.
-    """
-    x = center
-    lx = length
-    pole_sub = [[1, 1] for _ in range(len(coordinates))]
-    # simple build
-    if not mode:
-        pole = rad.ObjMltExtTri(x, lx, coordinates, pole_sub)
-    else:
-        str_param = 'ki->Numb,TriAngMin->' + str(triangle_min_size) + ',TriAreaMax->' + str(triangle_max_size)
-        pole = rad.ObjMltExtTri(x, lx, coordinates, pole_sub, 'x', [0., 0., 0.], str_param)
-    return pole
-
-
-def make_racetrack_coil(center, radii, sizes, segments=15, current=1):
-    """
-    Create coil for H-dipole. Coil runs in the XY plane.
-    :param center: (list) Center of the coil in [x, y, z].
-    :param radii: (list) Inner and outer edges for the coil.
-    :param sizes: (list) Straight sections lengths in X and Y; coil height in Z.
-    :param segments: (int) Number of segments for coil corners (default: 15).
-    :param current: (float) Current carried by the coil (default: 1).
-    :return: Radia object representing the coil
-    """
-    return rad.ObjRaceTrk(center, radii, sizes[:2], sizes[2], segments, current, 'man', 'z')
-
-
-def make_dipole(pole_dimensions, center, length, current=-10000,
-                trimesh_mode=0, triangle_min_size=TRIANGLE_MIN_SIZE, triangle_max_size=TRIANGLE_MAX_SIZE, longitudinal_divisions=4):
-    """
-    Construct a complete H-dipole made of iron.
-    :param pole_dimensions: (dict) Parameters describing geometry of pole piece. See `_create_point_table`.
-    :param center: (float) Center point of dipole in x (longitudinal center for beam frame).
-    :param length: (float) Length of the dipole in x
-    :param current: (float) Current carried by dipole coils (default: -10000)
-    :param trimesh_mode: (int) If 0 (default) then the pole piece is divisioned into polygons based on point ordering
-    from coordinate list. If != 0 then a Triangular mesh is automatically generated.
-    :param longitudinal_divisions: (int) Number of slices to divide up the dipole into along the x-axis (default: 4)
-    :return:
-    """
-    # coil_factor increases coil size slightly to accommodate sharp corners of pole piece
-    coil_length_factor = 1.005
-    coil_height_factor = 3. / 4.
-    coil_or_factor = 0.85
-    # Geometry for the poles
-    table_quadrant_one = _create_point_table(**pole_dimensions)
-    top_coodinates = _get_all_points_top(table_quadrant_one)
-    bottom_coordinates = _get_all_points_bottom(top_coodinates)
-
-    top_pole = create_pole(top_coodinates, center, length, mode=trimesh_mode, triangle_min_size=triangle_min_size, triangle_max_size=triangle_max_size)
-    bottom_pole = create_pole(bottom_coordinates, center, length, mode=trimesh_mode, triangle_min_size=triangle_min_size, triangle_max_size=triangle_max_size)
-
-    # Material for the poles (uses Iron)
-    ironmat = rad.MatSatIsoFrm([20000, 2], [0.1, 2], [0.1, 2])
-    rad.MatApl(top_pole, ironmat)
-    rad.MatApl(bottom_pole, ironmat)
-
-    # Coils
-    coil_outer_radius = pole_dimensions['pole_separation'] * coil_or_factor
-    top_coil = make_racetrack_coil(center=[0, 0.0, pole_dimensions['gap_height'] + pole_dimensions['pole_height'] / 2.],
-                                   radii=[0.1, coil_outer_radius],
-                                   sizes=[length * coil_length_factor, 
-                                          pole_dimensions['pole_width'] * 2 * coil_length_factor, 
-                                          pole_dimensions['pole_height'] * coil_height_factor],
-                                   current=current)
-    bottom_coil = make_racetrack_coil(center=[0, 0.0, -1. * (pole_dimensions['gap_height'] + pole_dimensions['pole_height'] / 2.)],
-                                      radii=[0.1, coil_outer_radius],
-                                      sizes=[length * coil_length_factor, 
-                                             pole_dimensions['pole_width'] * 2 * coil_length_factor, 
-                                             pole_dimensions['pole_height'] * coil_height_factor],
-                                      current=current)
-
-    # Visualization
-    rad.ObjDrwAtr(top_pole, [0, 0.4, 0.8])
-    rad.ObjDrwAtr(bottom_pole, [0, 0.4, 0.8])
-    rad.ObjDrwAtr(top_coil, [0.2, 0.9, 0.6])
-    rad.ObjDrwAtr(bottom_coil, [0.2, 0.9, 0.6])
-
-    # Element Division
-    rad.ObjDivMag(top_pole, [longitudinal_divisions, 1, 1])
-    rad.ObjDivMag(bottom_pole, [longitudinal_divisions, 1, 1])
-
-    return rad.ObjCnt([top_pole, bottom_pole, top_coil, bottom_coil])
-
-
-
-# geometry.py
-import numpy as np
-
-
-def get_circle_center(p1, p2, r):
-    """Return the center (x,y) of a circle given two points p1 and p2 and radius r"""
-    x1, y1 = p1
-    x2, y2 = p2
-    
-    c = x1**2 + y1**2 - x2**2 - y2**2
-    x3 = x1 - x2
-    y3 = y1 - y2
-    cy = 0.5 * c / y3 - y1
-    c2 = (x1**2 + cy**2 - r**2)
-
-    a = (x3**2 + y3**2) / y3**2
-    b = -2* x1 - 2 * cy * x3 / y3
-    center0 = (-b - np.sqrt(b**2 - 4 * a * c2)) / (2 * a)
-    center1 = -x3 * center0 / y3 + 0.5 * c / y3
-    
-    return center0, center1
-
-def get_arc_points(x1, x2, center, radius, N=15):
-    """Return a list of points (x, y) giving an arc on a circle at center=(x, y) and radius. Arc is between points on the x-axis [x1, x2)"""
-    x = np.linspace(x1, x2, N)
-    
-    a = 1.0
-    b = -2 * center[1]
-    c = center[1]**2  - radius**2 + (x - center[0])**2
-    
-    y = (- b - np.sqrt(b**2 - 4 * a *c )) / (2 * a)
-    
-    return x, y 
-
-def get_intersection(line1_p1, line1_p2, line2_p1, line2_p2):
-    """find the intersection of two infinite lines defined by two points on each line"""
-    x1, y1 = line1_p1
-    x2, y2 = line1_p2
-    x3, y3 = line2_p1
-    x4, y4 = line2_p2
-    
-    D = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
-    
-    Px = (x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)
-    Px /= D
-    
-    Py = (x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)
-    Py /= D
-    
-    return Px, Py
-
- '''
-    def solve(self, prec=1e-4, maxiter=1e3, verbose=False)
-        if not verbose:
-            Solve(self._container, prec, maxIter)
+        # Define the point table for the magnet
+        q1_pts = array([[0.0, gap_height],
+                 [pole_width - bevel_base, gap_height],
+                 [pole_width, pole_height + gap_height],
+                 [pole_width + pole_sep, pole_height + gap_height],
+                 [pole_width + pole_sep, 0.0],
+                 [pole_width + pole_sep + leg_width, 0.0],
+                 [pole_width + pole_sep + leg_width, gap_height + pole_height + top_height],
+                 [pole_width + pole_sep, top_height + pole_height + gap_height],
+                 [0.0, top_height + pole_height + gap_height]])        
+        q2_pts = q1_pts[1:-1]*array([-1, 1])
+        self._top_pts = q1_pts.tolist() + q2_pts[::-1].tolist()
+        self._bottom_pts = (array(self._top_pts)*array([1,-1])).tolist()      
+                
+        # Assign aesthetic parameters to class members
+        self._name = name
+        self._yoke_col = yoke_col
+        self._coil_col = coil_col
+                
+        # Initialize a dictionary containing elements of the magnet
+        self._build()
+        
+    # Constructs the magnet in a completely unmagnetized state
+    def _build(self):
+        
+        # Construct the yoke & divide it into a mesh
+        pole_sub = [[1, 1] for _ in range(len(self._top_pts))]
+        if not self._mesh_mode:
+            top_pole = ObjMltExtTri(self._x_center, self._length, self._top_pts, pole_sub)
+            bottom_pole = ObjMltExtTri(self._x_center, self._length, self._bottom_pts, pole_sub)
         else:
-            t0 = time()
-            out = Solve(self._container, prec, maxIter)
-            dt = (time()-t0)*1e3
-            print("\nSolver Output:\n\t" + \
-                "Time Elapsed: {:.3f} ms\n\t".format(dt) + \
-                "Iterations: {:d}\n\t".format(int(out[3])) + \
-                "Final Magnetization Stability: {:.4f} T".format(out[0]) + \
-                "Final Maximum Magnetization: {:.4f} T".format(out[1]) + \
-                "Final Maximum Field Strength: {:.4f} T".format(out[2]) + \
-                "Peak Magnetic Field: {:.6f} T".format(self.bfieldpt([0,0,0])[-1]))
-    '''
+            str_param = 'ki->Numb,TriAngMin->' + str(TRI_MIN_SIZE) + ',TriAreaMax->' + str(TRI_MAX_SIZE)
+            top_pole = ObjMltExtTri(self._x_center, self._length, self._top_pts, pole_sub, 'x', [0.,0.,0.], str_param)
+            bottom_pole = ObjMltExtTri(self._x_center, self._length, self._bottom_pts, pole_sub, 'x', [0.,0.,0.], str_param)
+        ObjDivMag(top_pole, [self._x_div, 1, 1])
+        ObjDivMag(bottom_pole, [self._x_div, 1, 1])
+        
+        # Get the volumes of each constituent yoke element
+        tp_items = ObjCntStufRec(top_pole)
+        bp_items = ObjCntStufRec(bottom_pole)
+        self._sub_volumes = zeros((len(tp_items)+len(bp_items)))
+        for i in range(len(tp_items)):
+            self._sub_volumes[i] = ObjGeoVol(tp_items[i])
+        for i in range(len(bp_items)):
+            self._sub_volumes[i+len(tp_items)] = ObjGeoVol(bp_items[i])
+        
+        # Construct the coils
+        coil_center = array([0., 0., self._gap_height+self._pole_height/2.])
+        radii = array([self._coil_inner, self._pole_sep*self._coil_rfactor])
+        sizes = array([self._length*self._coil_lfactor, self._pole_width*2*self._coil_lfactor, self._pole_height*self._coil_hfactor])
+        top_coil = ObjRaceTrk(list(coil_center), radii, sizes[:2], sizes[2], self._coil_div, 0, 'man', 'z')
+        bottom_coil = ObjRaceTrk(list(-coil_center), radii, sizes[:2], sizes[2], self._coil_div, 0, 'man', 'z')
+                    
+        # Assign poles & coils as magnet elements
+        self._elements = {
+            'top_pole': top_pole,
+            'top_coil': top_coil,
+            'bottom_pole': bottom_pole,
+            'bottom_coil': bottom_coil,
+        }
+                        
+    # Returns the requested Radia-computed field for the magnet (at its center, by default)
+    def field(self, typestr, pt=[0,0,0]):
+        temp_container = ObjCnt([el for el in self._elements.values()])
+        out = Fld(temp_container, typestr, pt)
+        UtiDel(temp_container)
+        return out
+
+    # Magnetizes the magnet by applying a current & accounting for hysteresis
+    def magnetize(self, J, hysteresis_model):
+                
+        # Store the previous magnetization state (in SI units)
+        tp_items = ObjCntStufRec(self._elements['top_pole'])
+        bp_items = ObjCntStufRec(self._elements['bottom_pole'])
+        H_prev = zeros((len(tp_items)+len(bp_items), 3))
+        M_prev = zeros((len(tp_items)+len(bp_items), 3))
+        for i in range(len(tp_items)):
+            vol_center, M = ObjM(tp_items[i])
+            H_tc = Fld(self._elements['top_coil'], 'h', vol_center)
+            H_bc = Fld(self._elements['bottom_coil'], 'h', vol_center)
+            H_prev[i] = array(H_tc)+array(H_bc)
+            M_prev[i] = M
+        for i in range(len(bp_items)):
+            vol_center, M = ObjM(bp_items[i])
+            H_tc = Fld(self._elements['top_coil'], 'h', vol_center)
+            H_bc = Fld(self._elements['bottom_coil'], 'h', vol_center)
+            H_prev[i+len(tp_items)] = array(H_tc)+array(H_bc)
+            M_prev[i+len(tp_items)] = M
+        H_prev /= MU0
+        M_prev /= MU0
+
+        # Delete old magnet elements
+        for el in self._elements.values(): UtiDelStuf(el)
+        
+        # Construct new coil objects with the specified current applied
+        coil_center = array([0., 0., self._gap_height+self._pole_height/2.])
+        radii = array([self._coil_inner, self._pole_sep*self._coil_rfactor])
+        sizes = array([self._length*self._coil_lfactor, self._pole_width*2*self._coil_lfactor, self._pole_height*self._coil_hfactor])
+        top_coil = ObjRaceTrk(list(coil_center), radii, sizes[:2], sizes[2], self._coil_div, J, 'man', 'z')
+        bottom_coil = ObjRaceTrk(list(-coil_center), radii, sizes[:2], sizes[2], self._coil_div, J, 'man', 'z')
+        
+        # Construct a new yoke & divide it into a mesh
+        pole_sub = [[1, 1] for _ in range(len(self._top_pts))]
+        if not self._mesh_mode:
+            top_pole = ObjMltExtTri(self._x_center, self._length, self._top_pts, pole_sub)
+            bottom_pole = ObjMltExtTri(self._x_center, self._length, self._bottom_pts, pole_sub)
+        else:
+            str_param = 'ki->Numb,TriAngMin->' + str(TRI_MIN_SIZE) + ',TriAreaMax->' + str(TRI_MAX_SIZE)
+            top_pole = ObjMltExtTri(self._x_center, self._length, self._top_pts, pole_sub, 'x', [0.,0.,0.], str_param)
+            bottom_pole = ObjMltExtTri(self._x_center, self._length, self._bottom_pts, pole_sub, 'x', [0.,0.,0.], str_param)
+        ObjDivMag(top_pole, [self._x_div, 1, 1])
+        ObjDivMag(bottom_pole, [self._x_div, 1, 1])
+        
+        # Assign correct magnetizations to each constituent yoke element
+        tp_items = ObjCntStufRec(top_pole)
+        bp_items = ObjCntStufRec(bottom_pole)
+        M_vol = zeros((len(tp_items)+len(bp_items), 3))
+        for i in range(len(tp_items)):
+            vol_center, _ = ObjM(tp_items[i])
+            H_tc = Fld(top_coil, 'h', vol_center)
+            H_bc = Fld(bottom_coil, 'h', vol_center)
+            H_vol = array(H_tc)+array(H_bc)
+            M_hyst = [0, 0, 0]
+            for j in range(3):
+                H_hyst, B_hyst = hysteresis_model.path(array([[H_prev[i,j], H_vol[j]]]), M_prev[i,j])
+                M_hyst[j] = B_hyst[-1]
+            ObjSetM(tp_items[i], M_hyst)
+            M_vol[i] = M_hyst
+        for i in range(len(bp_items)):
+            vol_center, _ = ObjM(bp_items[i])
+            H_tc = Fld(top_coil, 'h', vol_center)
+            H_bc = Fld(bottom_coil, 'h', vol_center)
+            H_vol = array(H_tc)+array(H_bc)
+            M_hyst = [0, 0, 0]
+            for j in range(3):
+                H_hyst, B_hyst = hysteresis_model.path(array([[H_prev[i+len(tp_items),j], H_vol[j]]]), M_prev[i+len(tp_items),j])
+                M_hyst[j] = B_hyst[-1]
+            ObjSetM(bp_items[i], M_hyst)
+            M_vol[i+len(tp_items)] = M_hyst
+            
+        # Assign poles & coils as magnet elements
+        self._elements = {
+            'top_pole': top_pole,
+            'top_coil': top_coil,
+            'bottom_pole': bottom_pole,
+            'bottom_coil': bottom_coil,
+        }
+            
+        # Compute the center-point applied field & volume-averaged magnetization
+        H_tc = Fld(self._elements['top_coil'], 'h', [self._x_center, 0, 0])
+        H_bc = Fld(self._elements['bottom_coil'], 'h', [self._x_center, 0, 0])
+        H_next = array(H_tc)+array(H_bc)
+        M_next = (self._sub_volumes@M_vol)/self._sub_volumes.sum()
+        
+        return H_next, M_next
+
+    # Views the magnet using its RadiaViewer member
+    def display(self):
+
+        # Set color attributes for magnet elements
+        ObjDrwAtr(self._elements['top_pole'], self._yoke_col)
+        ObjDrwAtr(self._elements['top_coil'], self._coil_col)
+        ObjDrwAtr(self._elements['bottom_pole'], self._yoke_col)
+        ObjDrwAtr(self._elements['bottom_coil'], self._coil_col)
+
+        # Create a temporary container for magnet elements & add it to the viewer
+        viewer = rv.RadiaViewer()
+        temp_container = ObjCnt([el for el in self._elements.values()])
+        viewer.add_geometry(self._name, temp_container)
+
+        # Open the viewer and delete the temporary container
+        display = viewer.display()
+        UtiDel(temp_container)
+        return display

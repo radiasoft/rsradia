@@ -2,12 +2,10 @@
 
 u""":mod:`magnets` package
 """
+#
+from .base import *
 
-# Define minimum & maximum trangle mesh sizes
-TRI_MIN_SIZE = 0.5
-TRI_MAX_SIZE = 1.0
-
-# Import the implemented hysteresis models
+# Import the implemented magnet models
 from .block import Block
+from .H_dipole import HDipole
 #from .simple_dipole import SimpleDipole
-#from .H_dipole import HDipole

@@ -66,8 +66,9 @@ class JilesAtherton:
         
         # Define the remanant magnetic field values for the model
         rem_points = [int(.4*len(self.H_major)), int(.8*len(self.H_major))]
-        self.B_rem = array([self.B_major[rpt] for rpt in rem_points])
-            
+        self.remanence = array([self.B_major[rpt] for rpt in rem_points])
+        self.coercivity = self.H_major[rem_points[0]:][abs(self.B_major[rem_points[0]:])<=1e-2]
+                    
     # Computes the anhysteretic, isotropic magnetization
     def _Mai(self, He):
         return self._Ms*(cosh(He/self._a)/sinh(He/self._a)-self._a/He)

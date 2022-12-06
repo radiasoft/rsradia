@@ -44,7 +44,7 @@ class Preisach:
             
         # Construct the scaled Preisach grid
         n_grid = int(round(ceil(2*self._ab_max/self._ab_res)))
-        self.grid = -1+2*array([[a,b] for a in range(n_grid+1) for b in range(n_grid+1)])/n_grid
+        self._grid = -1+2*array([[a,b] for a in range(n_grid+1) for b in range(n_grid+1)])/n_grid
 
         # Raise exceptions for invalid input distributions & parameters
         if isinstance(distribution, str):
@@ -52,13 +52,13 @@ class Preisach:
                 raise ValueError("Invalid choice of distribution, must be one of: {:s}".format(', '.join(DISTRIBUTIONS.keys())))
             else:
                 try:
-                    self._density = DISTRIBUTIONS[distribution.upper()](self.grid, *dist_params)
+                    self._density = DISTRIBUTIONS[distribution.upper()](self._grid, *dist_params)
                 except:
                     raise RuntimeError("Unable to call {:s} with arguments in \"dist_params\"".format(distribution.upper()))
         elif isinstance(distribution, ndarray):
             if distribution.min()<0:
                 raise ValueError("Custom distributions must contain only non-negative values")
-            elif distribution.shape!=self.grid.shape:
+            elif distribution.shape!=self._grid.shape:
                 raise ValueError("Custom distributions must be the same shape as the Preisach grid")
             else:
                 self._density = distribution
@@ -66,16 +66,17 @@ class Preisach:
             raise ValueError("\"distribution\" must be a str or a numpy.ndarray")        
 
         # Reduce the Preisach density to its upper half & normalize, rescale the Preisach grid
-        self.density[self.grid[:,0]>=self.grid[:,1]] = 0        
-        self.density /= self.density.sum()
-        self.grid *= self._ab_max
+        self._density[self._grid[:,0]>=self._grid[:,1]] = 0        
+        self._density /= self._density.sum()
+        self._grid *= self._ab_max
         
         # Compute the major hysteresis curve for the model (sets self.H_major, self.B_major)
         self._get_major()
         
         # Define the remanant magnetic field values for the model
-        crit_points = [int(.4*len(self.H_major)), int(.8*len(self.H_major))]
-        self.B_rem = array([self.B_major[cpt] for cpt in crit_points])
+        rem_points = [int(.4*len(self.H_major)), int(.8*len(self.H_major))]
+        self.remanence = array([self.B_major[rpt] for rpt in rem_points])
+        self.coercivity = self.H_major[rem_points[0]:][abs(self.B_major[rem_points[0]:])<=1e-2]
             
     # Computes the initial & major 
     def _get_major(self):
@@ -85,29 +86,29 @@ class Preisach:
         M = [1e-6]
         
         # Initialize hysteron values
-        R = zeros(len(self.grid))
-        R[-self.grid[:,0]>=self.grid[:,1]] = 1
-        R[-self.grid[:,0]<self.grid[:,1]] = -1
+        R = zeros(len(self._grid))
+        R[-self._grid[:,0]>=self._grid[:,1]] = 1
+        R[-self._grid[:,0]<self._grid[:,1]] = -1
         
         # Increase applied field until saturation is reached
         while (H[-1]<self._ab_max):
             H.append(H[-1] + self._dH)
-            R[H[-1]>self.grid[:, 1]] = 1
-            M.append(self.density@R)
+            R[H[-1]>self._grid[:, 1]] = 1
+            M.append(self._density@R)
             
         n_curve = int(round(ceil(2*max(H)/self._dH)))
         
         # Decrease applied field until negative saturation is reached
         for i in range(n_curve):
             H.append(H[-1] - self._dH)
-            R[H[-1]<self.grid[:, 0]] = -1
-            M.append(self.density@R)
+            R[H[-1]<self._grid[:, 0]] = -1
+            M.append(self._density@R)
             
         # Increase applied field until saturation is reached again
         for i in range(n_curve):
             H.append(H[-1] + self._dH)
-            R[H[-1]>self.grid[:, 1]] = 1
-            M.append(self.density@R)
+            R[H[-1]>self._grid[:, 1]] = 1
+            M.append(self._density@R)
               
         # Assign the hysteresis variables to model class members
         self.H_major = array(H)
@@ -126,9 +127,9 @@ class Preisach:
         
         # Initializehysteron values
         ab0 = (M0/self.B_major.max()/MU0)*self._ab_max
-        R = zeros(len(self.grid))
-        R[-self.grid[:,0] >= self.grid[:,1]-ab0] = 1
-        R[-self.grid[:,0] < self.grid[:,1]-ab0] = -1
+        R = zeros(len(self._grid))
+        R[-self._grid[:,0] >= self._grid[:,1]-ab0] = 1
+        R[-self._grid[:,0] < self._grid[:,1]-ab0] = -1
         
         # Loop over magnetizing field paths
         for p in range(len(H_path)):
@@ -144,9 +145,9 @@ class Preisach:
             # Compute the hysteresis along this path
             for n in range(N):
                 H[N0+n] = Hstart + n*self._dH*sgn
-                if sgn>0: R[H[N0+n] > self.grid[:, 1]] = 1
-                else: R[H[N0+n] < self.grid[:, 0]] = -1
-                M[N0+n] = self.density@R
+                if sgn>0: R[H[N0+n] > self._grid[:, 1]] = 1
+                else: R[H[N0+n] < self._grid[:, 0]] = -1
+                M[N0+n] = self._density@R
         
         return H, self._Ms*MU0*M
                 
