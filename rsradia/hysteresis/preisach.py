@@ -58,7 +58,7 @@ class Preisach:
         elif isinstance(distribution, ndarray):
             if distribution.min()<0:
                 raise ValueError("Custom distributions must contain only non-negative values")
-            elif distribution.shape!=self._grid.shape:
+            elif distribution.shape[0]!=self._grid.shape[0]:
                 raise ValueError("Custom distributions must be the same shape as the Preisach grid")
             else:
                 self._density = distribution
