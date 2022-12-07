@@ -2,7 +2,7 @@
 ### November 2022
 ### A Preisach model for the hysteresis of a magnetic material
 
-from numpy import array, zeros, ceil, argsort, ndarray
+from numpy import array, zeros, ceil, argsort, ndarray, diff, sign
 from pickle import dump, load
 
 from . import MU0
@@ -72,23 +72,20 @@ class Preisach:
         
         # Compute the major hysteresis curve for the model (sets self.H_major, self.B_major)
         self._get_major()
-        
-        # Define the remanant magnetic field values for the model
-        rem_points = [int(.4*len(self.H_major)), int(.8*len(self.H_major))]
-        self.remanence = array([self.B_major[rpt] for rpt in rem_points])
-        self.coercivity = self.H_major[rem_points[0]:][abs(self.B_major[rem_points[0]:])<=1e-2]
+        self._get_criticals()
             
     # Computes the initial & major 
     def _get_major(self):
         
         # Initialize the applied field & magnetization
         H = [0]
-        M = [1e-6]
+        M = [0]
         
         # Initialize hysteron values
         R = zeros(len(self._grid))
-        R[-self._grid[:,0]>=self._grid[:,1]] = 1
-        R[-self._grid[:,0]<self._grid[:,1]] = -1
+        R[-self._grid[:,0] >= self._grid[:,1]] = 1
+        R[-self._grid[:,0] < self._grid[:,1]] = -1
+        R[self._grid[:,0]>=self._grid[:,1]] = 0
         
         # Increase applied field until saturation is reached
         while (H[-1]<self._ab_max):
@@ -113,6 +110,43 @@ class Preisach:
         # Assign the hysteresis variables to model class members
         self.H_major = array(H)
         self.B_major = self._Ms*MU0*array(M)
+        
+    # Computes the material coercivity & remanent field
+    def _get_criticals(self):        
+        
+        # Separate the major loop into upper & lower sections
+        upper_inds = range(int(.2*len(self.H_major)), int(.6*len(self.H_major)))
+        lower_inds = range(int(.6*len(self.H_major)), int(len(self.H_major)))
+        H_upper = self.H_major[upper_inds]
+        H_lower = self.H_major[lower_inds]
+        B_upper = self.B_major[upper_inds]
+        B_lower = self.B_major[lower_inds]
+        
+        # Determine the remanent field
+        if 0 in H_upper:
+            Bru = float(B_upper[H_upper==0])
+        else:
+            H0 = int(diff(sign(H_upper)).nonzero()[0])
+            Bru = float(B_upper[H0:H0+2].sum()/2)
+        if 0 in H_lower:
+            Brl = float(B_lower[H_lower==0])
+        else:
+            H0 = int(diff(sign(H_lower)).nonzero()[0])
+            Brl = float(B_lower[H0:H0+2].sum()/2)
+        self.remanence = array([Brl, Bru])
+            
+        # Determine the coercivity
+        if 0 in B_upper:
+            Hcu = float(H_upper[B_upper==0])
+        else:
+            B0 = int(diff(sign(B_upper)).nonzero()[0])
+            Hcu = float(H_upper[B0:B0+2].sum()/2)
+        if 0 in B_lower:
+            Hcl = float(H_lower[B_lower==0])
+        else:
+            B0 = int(diff(sign(B_lower)).nonzero()[0])
+            Hcl = float(H_lower[B0:B0+2].sum()/2)
+        self.coercivity = array([Hcu, Hcl])
         
     # Use the model to compute hysteresis curves along a path of applied fields
     def path(self, H_path, M0):
@@ -178,12 +212,12 @@ class Preisach:
         return sum([B[pt]*H_dists[pt] for pt in neighbors])/self._dH
     
     # Saves a Preisach model to a file
-    def save(self, path="./pr_model.pkl"):
+    def save(self, path="./self.pkl"):
         with open(path,'wb') as file:
             dump(self, file)
     
     # Loads a Preisach model from a file (possibly on instantiation)
     @classmethod
-    def load(cls, path="./pr_model.pkl"):
+    def load(cls, path="./self.pkl"):
         with open(path, 'rb') as file:
             return load(file)

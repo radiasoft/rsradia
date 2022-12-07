@@ -108,7 +108,7 @@ class HDipole:
         bottom_coil = ObjRaceTrk(list(-coil_center), radii, sizes[:2], sizes[2], self._coil_div, 0, 'man', 'z')
                     
         # Assign poles & coils as magnet elements
-        self._elements = {
+        self.elements = {
             'top_pole': top_pole,
             'top_coil': top_coil,
             'bottom_pole': bottom_pole,
@@ -117,7 +117,7 @@ class HDipole:
                         
     # Returns the requested Radia-computed field for the magnet (at its center, by default)
     def field(self, typestr, pt=[0,0,0]):
-        temp_container = ObjCnt([el for el in self._elements.values()])
+        temp_container = ObjCnt([el for el in self.elements.values()])
         out = Fld(temp_container, typestr, pt)
         UtiDel(temp_container)
         return out
@@ -126,27 +126,27 @@ class HDipole:
     def magnetize(self, J, hysteresis_model):
                 
         # Store the previous magnetization state (in SI units)
-        tp_items = ObjCntStufRec(self._elements['top_pole'])
-        bp_items = ObjCntStufRec(self._elements['bottom_pole'])
+        tp_items = ObjCntStufRec(self.elements['top_pole'])
+        bp_items = ObjCntStufRec(self.elements['bottom_pole'])
         H_prev = zeros((len(tp_items)+len(bp_items), 3))
         M_prev = zeros((len(tp_items)+len(bp_items), 3))
         for i in range(len(tp_items)):
             vol_center, M = ObjM(tp_items[i])
-            H_tc = Fld(self._elements['top_coil'], 'h', vol_center)
-            H_bc = Fld(self._elements['bottom_coil'], 'h', vol_center)
+            H_tc = Fld(self.elements['top_coil'], 'h', vol_center)
+            H_bc = Fld(self.elements['bottom_coil'], 'h', vol_center)
             H_prev[i] = array(H_tc)+array(H_bc)
             M_prev[i] = M
         for i in range(len(bp_items)):
             vol_center, M = ObjM(bp_items[i])
-            H_tc = Fld(self._elements['top_coil'], 'h', vol_center)
-            H_bc = Fld(self._elements['bottom_coil'], 'h', vol_center)
+            H_tc = Fld(self.elements['top_coil'], 'h', vol_center)
+            H_bc = Fld(self.elements['bottom_coil'], 'h', vol_center)
             H_prev[i+len(tp_items)] = array(H_tc)+array(H_bc)
             M_prev[i+len(tp_items)] = M
         H_prev /= MU0
         M_prev /= MU0
 
         # Delete old magnet elements
-        for el in self._elements.values(): UtiDelStuf(el)
+        for el in self.elements.values(): UtiDelStuf(el)
         
         # Construct new coil objects with the specified current applied
         coil_center = array([0., 0., self._gap_height+self._pole_height/2.])
@@ -195,7 +195,7 @@ class HDipole:
             M_vol[i+len(tp_items)] = M_hyst
             
         # Assign poles & coils as magnet elements
-        self._elements = {
+        self.elements = {
             'top_pole': top_pole,
             'top_coil': top_coil,
             'bottom_pole': bottom_pole,
@@ -203,8 +203,8 @@ class HDipole:
         }
             
         # Compute the center-point applied field & volume-averaged magnetization
-        H_tc = Fld(self._elements['top_coil'], 'h', [self._x_center, 0, 0])
-        H_bc = Fld(self._elements['bottom_coil'], 'h', [self._x_center, 0, 0])
+        H_tc = Fld(self.elements['top_coil'], 'h', [self._x_center, 0, 0])
+        H_bc = Fld(self.elements['bottom_coil'], 'h', [self._x_center, 0, 0])
         H_next = array(H_tc)+array(H_bc)
         M_next = (self._sub_volumes@M_vol)/self._sub_volumes.sum()
         
@@ -214,14 +214,14 @@ class HDipole:
     def display(self):
 
         # Set color attributes for magnet elements
-        ObjDrwAtr(self._elements['top_pole'], self._yoke_col)
-        ObjDrwAtr(self._elements['top_coil'], self._coil_col)
-        ObjDrwAtr(self._elements['bottom_pole'], self._yoke_col)
-        ObjDrwAtr(self._elements['bottom_coil'], self._coil_col)
+        ObjDrwAtr(self.elements['top_pole'], self._yoke_col)
+        ObjDrwAtr(self.elements['top_coil'], self._coil_col)
+        ObjDrwAtr(self.elements['bottom_pole'], self._yoke_col)
+        ObjDrwAtr(self.elements['bottom_coil'], self._coil_col)
 
         # Create a temporary container for magnet elements & add it to the viewer
         viewer = rv.RadiaViewer()
-        temp_container = ObjCnt([el for el in self._elements.values()])
+        temp_container = ObjCnt([el for el in self.elements.values()])
         viewer.add_geometry(self._name, temp_container)
 
         # Open the viewer and delete the temporary container

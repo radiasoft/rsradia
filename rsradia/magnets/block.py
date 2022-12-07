@@ -56,14 +56,14 @@ class Block():
         coil = ObjRaceTrk(self._center, r_coil, l_coil, self._block_dims[2], self._coil_divs, 0, 'man', 'z')
 
         # Assign the block & coil as magnet elements
-        self._elements = {
+        self.elements = {
             'block': block,
             'coil': coil
         }
 
     # Returns the requested Radia-computed field for the magnet (at its center, by default)
     def field(self, typestr, pt=[0,0,0]):
-        temp_container = ObjCnt([self._elements['block'], self._elements['coil']])
+        temp_container = ObjCnt([self.elements['block'], self.elements['coil']])
         out = Fld(temp_container, typestr, pt)
         UtiDel(temp_container)
         return out
@@ -72,25 +72,25 @@ class Block():
     def magnetize(self, J, hysteresis_model):
 
         # Store the previous magnetization state (in SI units)
-        H_prev = array(Fld(self._elements['coil'], 'h', self._center))/MU0 #array(self.field('h', self._center))/MU0
-        M_prev = array(Fld(self._elements['block'], 'm', self._center))/MU0 #array(self.field('m', self._center))/MU0
+        H_prev = array(Fld(self.elements['coil'], 'h', self._center))/MU0 #array(self.field('h', self._center))/MU0
+        M_prev = array(Fld(self.elements['block'], 'm', self._center))/MU0 #array(self.field('m', self._center))/MU0
 
         # Delete old magnet elements
-        UtiDelStuf(self._elements['block'])
-        UtiDelStuf(self._elements['coil'])
+        UtiDelStuf(self.elements['block'])
+        UtiDelStuf(self.elements['coil'])
 
         # Construct a new coil object with the specified current applied
         r_coil = [self._coil_inner, self._coil_inner+self._coil_thickness]
         l_coil = [dim+self._coil_gap for dim in self._block_dims[:2]]
-        self._elements['coil'] = ObjRaceTrk(self._center, r_coil, l_coil, self._block_dims[2], self._coil_divs, J, 'man', 'z')
-        H_next = array(Fld(self._elements['coil'], 'h', self._center))/MU0
+        self.elements['coil'] = ObjRaceTrk(self._center, r_coil, l_coil, self._block_dims[2], self._coil_divs, J, 'man', 'z')
+        H_next = array(Fld(self.elements['coil'], 'h', self._center))/MU0
             
         # Construct a new block object with magnetization specified by the hysteresis model
         M_hyst = [0, 0, 0]
         for i in range(3):
             H_hyst, B_hyst = hysteresis_model.path(array([[H_prev[i], H_next[i]]]), M_prev[i])
             M_hyst[i] = B_hyst[-1]
-        self._elements['block'] = ObjRecMag(self._center, self._block_dims, M_hyst)
+        self.elements['block'] = ObjRecMag(self._center, self._block_dims, M_hyst)
         
         return H_next, M_hyst
 
@@ -98,12 +98,12 @@ class Block():
     def display(self):
 
         # Set color attributes for magnet elements
-        ObjDrwAtr(self._elements['block'], self._block_col)
-        ObjDrwAtr(self._elements['coil'], self._coil_col)
+        ObjDrwAtr(self.elements['block'], self._block_col)
+        ObjDrwAtr(self.elements['coil'], self._coil_col)
 
         # Create a temporary container for magnet elements & add it to the viewer
         viewer = rv.RadiaViewer()
-        temp_container = ObjCnt([self._elements['block'], self._elements['coil']])
+        temp_container = ObjCnt([self.elements['block'], self.elements['coil']])
         viewer.add_geometry(self._name, temp_container)
 
         # Open the viewer and delete the temporary container
