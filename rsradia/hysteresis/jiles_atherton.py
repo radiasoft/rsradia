@@ -19,7 +19,7 @@ class JilesAtherton:
     '''
     A Jiles-Atherton model of magnetic hysteresis
 
-    parameters:
+    Parameters:
         alpha: Domain coupling strength
         a: Domain wall density
         Ms: Saturation magnetization of material
@@ -232,6 +232,16 @@ class JilesAtherton:
             
         # Interpolate magnetic flux density between neighboring points
         return sum([B[pt]*H_dists[pt] for pt in neighbors])/self._dH
+    
+    #
+    @classmethod
+    def fit(cls, **fit_params):
+        """
+        
+        Parameters:
+            
+        """
+        return 0
     
     # Saves a Jiles-Atherton model to a file
     def save(self, path="./ja_model.pkl"):

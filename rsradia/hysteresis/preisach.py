@@ -19,7 +19,7 @@ class Preisach:
     '''
     A Preisach model of magnetic hysteresis
 
-    parameters:
+    Parameters:
         Ms: Saturation magnetization of the magnet
         ab_max: Maximum magnitude of hysteron on/off field values
         ab_res: Resolution of alpha/beta grid (point spacing)
@@ -210,6 +210,16 @@ class Preisach:
             
         # Interpolate magnetic flux density between neighboring points
         return sum([B[pt]*H_dists[pt] for pt in neighbors])/self._dH
+    
+    #
+    @classmethod
+    def fit(cls, **fit_params):
+        """
+        
+        Parameters:
+            
+        """
+        return 0
     
     # Saves a Preisach model to a file
     def save(self, path="./self.pkl"):

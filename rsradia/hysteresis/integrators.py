@@ -4,8 +4,8 @@
 
 from numpy import array, zeros, ceil
 
-# The 15-point Gauss-Kronrod quadrature integrator
 def KRON15(fun, bounds):
+    """The 15-point Gauss-Kronrod quadrature integrator"""
     
     # Define quadrature points & weights on [-1,1] interval
     xs = [0.0, 0.207784955007898, 0.405845151377397, 0.586087235467691,\
@@ -23,8 +23,9 @@ def KRON15(fun, bounds):
     # Evaluate function at quadrature points & return weighted result
     return ws@fun(xs)
 
-# A simple Euler integrator
 def EULER(X0, bounds, dt, diffEq, *diffArgs):
+    """A simple Euler integrator"""
+    
     isScalar = isinstance(X0,(int,float))
     N = int(round(ceil((bounds[1]-bounds[0]))/dt))+1
         
@@ -41,8 +42,9 @@ def EULER(X0, bounds, dt, diffEq, *diffArgs):
         
     return X
 
-# The standard 4th order Runge-Kutta integrator
 def RK4(X0, bounds, dt, diffEq, *diffArgs):
+    """The standard 4th order Runge-Kutta integrator"""
+    
     isScalar = isinstance(X0,(int,float))
 
     # Define integrator parameters
@@ -72,8 +74,9 @@ def RK4(X0, bounds, dt, diffEq, *diffArgs):
 
     return X
 
-# The Dormand-Prince Runge-Kutta integrator
 def RK45(X0, bounds, dt, diffEq, *diffArgs):
+    """The Dormand-Prince Runge-Kutta integrator"""
+    
     isScalar = isinstance(X0,(int,float))
 
     # Define integrator parameters
