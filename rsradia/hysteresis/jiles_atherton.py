@@ -1,36 +1,37 @@
 ### jiles_atherton.py
-### November 2022
-### A Jiles-Atherton model for the hysteresis of a magnetic material
+### February 2023
 
-from numpy import array, zeros, sinh, cosh, sin, cos, exp, ceil, argsort, diff, sign
-from pickle import dump, load
+from numpy import sinh, cosh, sin, cos, exp, diff, sign
 
 from .. import PI, MU0
-from .integrators import *
+from ..utils.integrators import *
+from . import KRON_SPLITS
 
-# Define numerical integrator options
-INTEGRATORS = {
-    'EULER': EULER,
-    'RK4': RK4,
-    'RK45': RK45,
-}
+from .hysteresis_model import HysteresisModel
 
-class JilesAtherton:
-    '''
-    A Jiles-Atherton model of magnetic hysteresis
+class JilesAtherton(HysteresisModel):
+    """
+    A Jiles-Atherton model for magnetic hysteresis
 
     Parameters:
         alpha: Domain coupling strength
-        a: Domain wall density
-        Ms: Saturation magnetization of material
-        k: Pinning site breaking energy
+        a: Domain wall density (A/m or T)
+        Ms: Saturation magnetization of material (A/m or T)
+        k: Pinning site breaking energy (A/m or T)
         c: Magnetization reversability
         wa: Relative weight of anisotropic contributions to magnetization
-        Ka: Average anisotropy energy density
+        Ka: Average anisotropy energy density (J/m^3)
         psi: Offset angle between anisotropy easy axis & magnetizing field
-    '''
+    """
     
-    def __init__(self, alpha, a, Ms, k, c, wa=0, Ka=0, psi=0, dH=1, integrator='RK4'):
+    # Define options for numerical integrators used by the model
+    INTEGRATORS = {'EULER': EULER,'RK4': RK4,'RK45': RK45,}
+    
+    # List slotted members of JilesAtherton (non-extendable)
+    __slots__ = ("_alpha", "_a", "_Ms", "_k", "_c", "_wa", "_Ka", "_psi", "_integrate")
+    
+    def __init__(self, alpha, a, Ms, k, c, dH, wa=0, Ka=0, psi=0, sat_tol=1e-3, integrator="RK4", units="SI"):
+        super().__init__(dH, units)
 
         # Raise exceptions for invalid input parameters
         if alpha<=0: raise ValueError("\"alpha\" (domain coupling strength) must be a positive, non-zero number")
@@ -41,215 +42,112 @@ class JilesAtherton:
         if wa<0 or wa>1: raise ValueError("\"wa\" (anisotropy weight) must be at least zero and at most one")
         if Ka<0: raise ValueError("\"Ka\" (average anisotropy density) must be zero or a positive number")
         if psi<0 or psi>PI: raise ValueError("\"psi\" (anisotropy easy axis offset angle) must be at least zero and at most pi")
-        if dH<=0: raise ValueError("\"dH\" (field step-size) must be a positive, non-zero number")
-        if integrator.upper() not in INTEGRATORS.keys():
-            raise ValueError("\"integrator\" must be one of {:s}".format(', '.join(INTEGRATORS.keys())))
+        if integrator.upper() not in self.INTEGRATORS:
+            raise ValueError("\"integrator\" must be one of {:s}".format(', '.join(self.INTEGRATORS)))
 
-        # Set valid input parameters
+        # Set input parameters
         self._alpha = alpha
-        self._a = a
-        self._Ms = Ms
-        self._k = k
+        self._a = a/self.units
+        self._Ms = Ms/self.units
+        self._k = k/self.units
         self._c = c
-        self._wa = wa
-        self._Ka = Ka
-        self._psi = psi
-        self._dH = dH
-        self._integrator= INTEGRATORS[integrator.upper()]      
-
-        # Enforce isotropy if specified by EITHER Ka or wa parameters
-        self._Ka = Ka/MU0
-        if (not self._wa) or (not self._Ka): self._Ka = self._psi = self._wa = 0        
+        if wa and Ka:
+            self._wa = wa
+            self._Ka = (Ka/MU0)
+            self._psi = psi
+        else: 
+            self._Ka = self._psi = self._wa = 0
+        self._integrate = self.INTEGRATORS[integrator.upper()]
         
-        # Compute the major hysteresis loop & critical points
-        self._get_major()
-        self._get_criticals()
-                    
-    # Computes the anhysteretic, isotropic magnetization
-    def _Mai(self, He):
-        return self._Ms*(cosh(He/self._a)/sinh(He/self._a)-self._a/He)
+        # Compute the major H-M curve & its critical points
+        self._get_major(sat_tol)
     
-    # Computes the anhysteretic, isotropic magnetization derivative
-    def _dMai(self, He):
-        return self._Ms*(self._a/He**2-1/(self._a*sinh(He/self._a)**2))
-    
-    # Computes the anhysteretic, anisotropic magnetization
-    def _Maa(self, He):
+    def _get_aniso(self, He):
+        """Computes the anhysteretic, anisotropic magnetization"""
         
-        # Define the integrand of the denominator
-        def _denominator_integrand(theta):
-            E1 = (He*cos(theta)-(self._Ka/self._Ms)*sin(self._psi-theta)**2)/self._a
-            E2 = (He*cos(theta)-(self._Ka/self._Ms)*sin(self._psi+theta)**2)/self._a
+        def _den_int(self, theta):
+            """Computes the integrand of the denominator in the anhysteretic, anisotropic magnetization"""
+            
+            E1 = (He*cos(theta)-(self._Ka/(self._Ms*self._a))*sin(self._psi-theta)**2)
+            E2 = (He*cos(theta)-(self._Ka/(self._Ms*self._a))*sin(self._psi+theta)**2)
             return exp((E1+E2)/2)*sin(theta)
-        
-        # Define the integrand of the numerator
-        def _numerator_integrand(theta):
-            return _denominator_integrand(theta)*cos(theta)
-        
-        # Compute the integrals & return the result
-        return self._Ms*KRON15(_numerator_integrand, (0, PI))/KRON15(_denominator_integrand, (0, PI))
     
-    # Computes the anhysteretic, anisotropic mangetization derivative
-    def _dMaa(self, He):
-        return (self._Maa(He+self._dH)-self._Maa(He-self._dH))/(2*self._dH)
+        def _num_int(self, theta):
+            """Computes the integrand of the numerator in the anhysteretic, anisotropic magnetization"""
+
+            return self._den_int(theta)*cos(theta)
+        
+        # Compute the 
+        Maa = self._Ms*KRON15(_num_int, (0, PI), KRON_SPLITS)/KRON15(_den_int, (0, PI), KRON_SPLITS)
+        dMaa = (Maa(He+self.dH)-Maa(He-self.dH))/(2*self.dH)
+        
+        return Maa, dMaa
              
-    # Computes the Jiles-Atherton differential equation for magnetization (returns dM/dH)
-    def _diffeq(self, H, M, dH_sign):
+    def _diffeq(self, H, M, delta):
+        """Computes the Jiles-Atherton differential equation for magnetization (returns dM/dH)"""
         
         # Compute the effective magnetic field
         He = H + self._alpha*M
+        if He==0: He+=1e-6*delta
         
         # Compute & add anhysteretic, isotropic magnetization contributions
-        Ma = (1-self._wa)*self._Mai(He)
-        dMa = (1-self._wa)*self._dMai(He)
+        Ma = (1-self._wa)*self._Ms*(cosh(He/self._a)/sinh(He/self._a)-self._a/He)
+        dMa = (1-self._wa)*self._Ms*(self._a/He**2-1/(self._a*sinh(He/self._a)**2))
         
         # Compute & add anfisotropic contributions (if any)
         if self._wa:
-            Ma += self._wa*self._Maa(He)
-            dMa += self._wa*self._dMaa(He)
+            Maa, dMaa = self._get_aniso(He)
+            Ma += self._wa*Maa
+            dMa += self._wa*dMaa
             
         # Compute & return the magnetization differential
-        return ((Ma-M)/(dH_sign*self._k-self._alpha*(Ma-M))+self._c*dMa)/(1+self._c)
-        
-    # Computes the major magnetic hysteresis curve of the model
-    def _get_major(self):
-        
-        # Initialize the applied field & magnetization
-        H = [0]
-        M = [1e-6]
-        
-        # Increase applied field until saturation is reached
-        delta_M = 1
-        while (delta_M > 2.5e-5):
-            
-            # Increase applied field & compute the magnetization 
-            H.append(H[-1] + self._dH)
-            M.append(self._integrator(M[-1], (H[-2], H[-1]), self._dH, self._diffeq, 1)[1])
-
-            # Determine the relative change in magnetization over this step
-            dMdH = abs(M[-1]-M[-2])/self._dH
-            delta_M = dMdH/M[-2]
-            
-        n_curve = int(round(ceil(2*max(H)/self._dH)))
-            
-        # Decrease applied field until negative saturation is reached
-        H += [max(H)-self._dH*n for n in range(n_curve+1)]
-        M += list(self._integrator(M[-1], (max(H), -max(H)), -self._dH, self._diffeq, -1))
-        
-        # Increase applied field until saturation is reached again
-        H += [min(H)+self._dH*n for n in range(n_curve+1)]
-        M += list(self._integrator(M[-1], (min(H), max(H)), self._dH, self._diffeq, 1))        
-            
-        # Assign the hysteresis variables to model class members
-        self.H_major = array(H)
-        self.B_major = MU0*array(M)
-        
-    # Computes the material coercivity & remanent field
-    def _get_criticals(self):        
-        
-        # Separate the major loop into upper & lower sections
-        upper_inds = range(int(.2*len(self.H_major)), int(.6*len(self.H_major)))
-        lower_inds = range(int(.6*len(self.H_major)), int(len(self.H_major)))
-        H_upper = self.H_major[upper_inds]
-        H_lower = self.H_major[lower_inds]
-        B_upper = self.B_major[upper_inds]
-        B_lower = self.B_major[lower_inds]
-        
-        # Determine the remanent field
-        if 0 in H_upper:
-            Bru = float(B_upper[H_upper==0])
-        else:
-            H0 = int(diff(sign(H_upper)).nonzero()[0])
-            Bru = float(B_upper[H0:H0+2].sum()/2)
-        if 0 in H_lower:
-            Brl = float(B_lower[H_lower==0])
-        else:
-            H0 = int(diff(sign(H_lower)).nonzero()[0])
-            Brl = float(B_lower[H0:H0+2].sum()/2)
-        self.remanence = array([Brl, Bru])
-            
-        # Determine the coercivity
-        if 0 in B_upper:
-            Hcu = float(H_upper[B_upper==0])
-        else:
-            B0 = int(diff(sign(B_upper)).nonzero()[0])
-            Hcu = float(H_upper[B0:B0+2].sum()/2)
-        if 0 in B_lower:
-            Hcl = float(H_lower[B_lower==0])
-        else:
-            B0 = int(diff(sign(B_lower)).nonzero()[0])
-            Hcl = float(H_lower[B0:B0+2].sum()/2)
-        self.coercivity = array([Hcu, Hcl])
+        return ((Ma-M)/(delta*self._k-self._alpha*(Ma-M))+self._c*dMa)/(1+self._c)
     
-    # Use the model to compute hysteresis curves along a path of applied fields
-    def path(self, H_path, M0):
+    def _get_major(self, sat_tol):
+        """Computes the major H-M curve & its critical points"""
         
-        # Determine numbers of hysteresis points & initialize hysteresis variables
-        N_path = (ceil(H_path.ptp(axis=1))/self._dH).round().astype('int32')+1
-        H = zeros(N_path.sum())
-        M = zeros(N_path.sum())
+        # Increase applied field until saturation is reached (initial curve)
+        delta_M = 1
+        H_init = [0]
+        M_init = [1e-6]
+        while (delta_M > sat_tol):
+            H_init.append(H_init[-1]+self.dH)            
+            M_init.append(self._integrate(M_init[-1], H_init[-2:], self.dH, self._diffeq, 1)[-1])
+            delta_M = abs((M_init[-1]-M_init[-2])/M_init[-2])
+                   
+        # Cycle to negative saturation & return to positive saturation (upper & lower curves)
+        H_upper = [H_init[-1]-self.dH*n for n in range(2*len(H_init)+1)]
+        M_upper = self._integrate(M_init[-1], [H_upper[0], H_upper[-1]], -self.dH, self._diffeq, -1)      
+        H_lower = [H_upper[-1]+self.dH*n for n in range(2*len(H_init)+1)]
+        M_lower = self._integrate(M_upper[-1], [H_lower[0], H_lower[-1]], self.dH, self._diffeq, 1)   
+        
+        # Combine H-M curves & determine critical points
+        self.H_major = [h*self.units for h in H_init+H_upper+H_lower]
+        self.M_major = [m*self.units for m in M_init+M_upper+M_lower]
+        self.remanence = [r*self.units for r in [M_upper[H_upper.index(0.)], M_lower[H_lower.index(0.)]]]
+        cuID = int(diff(sign(M_lower)).nonzero()[0])
+        clID = int(diff(sign(M_upper)).nonzero()[0])
+        self.coercivity = [c*self.units for c in [sum(H_lower[cuID:cuID+2])/2, sum(H_upper[clID:clID+2])/2]]
+        
+    def path(self, H_path, M0):
+        """Computes a hysteresis curve along a path of applied fields"""
+        
+        H = []
+        M = []
+        M0 /= self.units
         
         # Loop over magnetizing field paths
         for p in range(len(H_path)):
             
-            # Define starting & stopping field strengths for this path
-            Hstart, Hstop = H_path[p]
-            sgn = 1 if Hstop > Hstart else -1
+            # Define starting & stopping field strengths, field step, & number of steps
+            Hp = [h/self.units for h in H_path[p]]
+            dH = self.dH/self.units if Hp[-1] > Hp[0] else -self.dH/self.units
+            n_path = int(round(ceil((Hp[-1]-Hp[0])/dH)))
             
-            # Determine starting index & number of points on this path
-            N0 = N_path[:p].sum()
-            N = N_path[p]
-            
-            # Compute the hysteresis along this path
-            H[N0:N0+N] = Hstart + array(range(N))*self._dH*sgn
-            M[N0:N0+N] = self._integrator(M0, (Hstart, Hstop), self._dH*sgn, self._diffeq, sgn)
-            M0 = M[N0+N-1]
+            # Compute hysteresis values along the path
+            H += [Hp[0]+dH*n for n in range(n_path+1)]
+            M += self._integrate(M0, [Hp[0], H[-1]], dH, self._diffeq, sign(dH)) 
+            M0 = M[-1]
         
-        return H, MU0*M
-    
-    # Use the model to compute magnetic flux density at a particular field strength
-    def point(self, H_point, curve='upper'):
-        
-        # Indices for points along each curve
-        curve_indices = {
-            'initial': (0, int(.2*len(self.H_major))),
-            'upper': (int(.2*len(self.H_major)), int(.6*len(self.H_major))),
-            'lower': (int(.6*len(self.H_major)), int(len(self.H_major)))
-        }
-        
-        # Select points along the desired curve
-        if curve.lower() in curve_indices.keys():
-            indices = curve_indices[curve.lower()]
-        else:
-            print("WARNING: Curve choice not understood, using upper curve.")
-            indices = curve_indices['upper']
-        H = self.H_major[indices[0]:indices[1]]
-        B = self.B_major[indices[0]:indices[1]]
-        
-        # Find curve point closest to prescribed point
-        H_dists = abs(H - H_point)
-        neighbors = argsort(H_dists)[:2]
-            
-        # Interpolate magnetic flux density between neighboring points
-        return sum([B[pt]*H_dists[pt] for pt in neighbors])/self._dH
-    
-    #
-    @classmethod
-    def fit(cls, **fit_params):
-        """
-        
-        Parameters:
-            
-        """
-        return 0
-    
-    # Saves a Jiles-Atherton model to a file
-    def save(self, path="./ja_model.pkl"):
-        with open(path,'wb') as file:
-            dump(self, file)
-    
-    # Loads a Jiles-Atherton model from a file (possibly on instantiation)
-    @classmethod
-    def load(cls, path="./ja_model.pkl"):
-        with open(path, 'rb') as file:
-            return load(file)
+        return [h*self.units for h in H], [m*self.units for m in M]
+

@@ -1,9 +1,8 @@
 ### integrator_tests.py
-### Morgan Henderson, July 2022
-### Tests various integrators used in the hysteresis.ipynb notebook
+### February 2023
 
 from numpy import array, sin, log, exp, pi, einsum
-from integrators import EULER, RK4, RK45, KRON15
+from rsradia.utils.integrators import EULER, RK4, RK45, KRON15
 e = exp(1)
 
 # Define lambda functions to alert user of test status
@@ -20,14 +19,14 @@ def intTest1(t,x):
     return -exp(-t)
 def intTest2(t,x,w=1):
     return array([x[1],-x[0]*w**2])
-tInt = array(range(10001))/1000
+tInt = array([i/1000. for i in range(10001)])
 x0Int1 = 1
-x0Int2 = array([1,0])
-intAns1 = exp(-tInt).T
-intAns2 = array([sin(tInt+pi/2), -sin(tInt)]).T
+x0Int2 = [1,0]
+intAns1 = exp(-tInt)
+intAns2 = [sin(tInt+pi/2), -sin(tInt)]
 
 # Test the KRON15 quadrature integrator on various functions
-kronAcc = 3
+kronAcc = 9
 kronAns = [KRON15(quadFuns[t],quadBounds[t]) for t in range(3)]
 kronTests = [round(kronAns[t],kronAcc)==quadAns[t] for t in range(3)]
 if not all(kronTests): warn('KRON15 quadrature')
@@ -35,8 +34,8 @@ else: success('KRON15 quadrature')
 
 # Test the EULER integrator against a critical error value
 eulerETol = 0.05
-eulerAns = [EULER(x0Int1,tInt[[0,-1]],tInt[1]-tInt[0],intTest1),\
-              EULER(x0Int2,tInt[[0,-1]],tInt[1]-tInt[0],intTest2)]
+eulerAns = [array(EULER(x0Int1,[tInt[0],tInt[-1]],tInt[1]-tInt[0],intTest1)).T,\
+              array(EULER(x0Int2,[tInt[0],tInt[-1]],tInt[1]-tInt[0],intTest2)).T]
 eulerErr = [eulerAns[0]-intAns1, eulerAns[1]-intAns2]
 eulerTests = [(eulerErr[0]@eulerErr[0]/len(tInt))**.5,\
              (einsum('ij,ij->j',eulerErr[1],eulerErr[1])/len(tInt))**.5]
@@ -47,8 +46,8 @@ else: success('EULER vector')
 
 # Test the RK4 & RK45 integrators with scalar & vector states
 rkETol = [1e-3,1e-2]
-rk4Ans = [RK4(x0Int1,tInt[[0,-1]],tInt[1]-tInt[0],intTest1),\
-              RK4(x0Int2,tInt[[0,-1]],tInt[1]-tInt[0],intTest2)]
+rk4Ans = [array(RK4(x0Int1,[tInt[0],tInt[-1]],tInt[1]-tInt[0],intTest1)).T,\
+              array(RK4(x0Int2,[tInt[0],tInt[-1]],tInt[1]-tInt[0],intTest2)).T]
 rk4Err = [rk4Ans[0]-intAns1, rk4Ans[1]-intAns2]
 rk4Tests = [(rk4Err[0]@rk4Err[0]/len(tInt))**.5,\
              (einsum('ij,ij->j',rk4Err[1],rk4Err[1])/len(tInt))**.5]
@@ -56,8 +55,8 @@ if not rk4Tests[0]<rkETol[0]: warn('RK4 scalar')
 else: success('RK4 scalar')
 if not all(rk4Tests[1]<rkETol[1]): warn('RK4 vector')
 else: success('RK4 vector')
-rk45Ans = [RK45(x0Int1,tInt[[0,-1]],tInt[1]-tInt[0],intTest1),\
-              RK45(x0Int2,tInt[[0,-1]],tInt[1]-tInt[0],intTest2)]
+rk45Ans = [array(RK45(x0Int1,[tInt[0],tInt[-1]],tInt[1]-tInt[0],intTest1)).T,\
+              array(RK45(x0Int2,[tInt[0],tInt[-1]],tInt[1]-tInt[0],intTest2)).T]
 rk45Err = [rk45Ans[0]-intAns1, rk45Ans[1]-intAns2]
 rk45Tests = [(rk45Err[0]@rk45Err[0]/len(tInt))**.5,\
              (einsum('ij,ij->j',rk45Err[1],rk45Err[1])/len(tInt))**.5]
