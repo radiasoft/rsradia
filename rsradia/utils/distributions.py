@@ -9,13 +9,13 @@ from scipy.linalg import det, inv
 # shape (n, 2), in which n is the total number of pixels (n = nx * ny) and the 
 # 2 elements per pixel are its x/y values in the grid.
 
-# Defines a discrete uniform pdf
 def UNIFORM(grid):
+    """A discrete uniform grid density"""
     n_grid = array(grid.shape).prod()
     return zeros(n_grid)+1/n_grid
 
-# Defines a discrete Gaussian pdf
 def GAUSSIAN(grid, mu=array([0, 0]), Sigma=array([[.1, 0], [0, .1]])):
+    """A discrete Gaussian density"""
     
     # ARGS
     # mu: distribution mean (x/y coordinate pair)
@@ -30,8 +30,8 @@ def GAUSSIAN(grid, mu=array([0, 0]), Sigma=array([[.1, 0], [0, .1]])):
 
     return pX/pX.sum()
 
-# Defines a distrete Gaussian mixture pdf
 def GMIXTURE(grid, mus=array([[0, 0]]), Sigmas=array([[[.1, 0], [0, .1]]]), ws=[1]):
+    """A distrete Gaussian mixture density"""
     
     # ARGS
     # mus: distribution means (x/y coordinate pairs) for each mixand

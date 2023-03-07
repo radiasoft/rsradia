@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
-u""":mod:`hysteresis` package
+u""":mod:`hysteresis` module of the rsradia package
 """
 
-# Import pi & the vacuum permeability constant
-from .. import PI, MU0
+# Define number of interval divisions applied
+# during Gauss-Kronrod quadrature integration
+# (only used for anisotropic hysteresis)
+KRON_SPLITS = 6
 
-# Import the implemented hysteresis models
+# Import implemented hysteresis models
 from .jiles_atherton import JilesAtherton
 from .preisach import Preisach
