@@ -10,3 +10,9 @@ import pytest
 
 def test_1():
     import rsradia
+
+def test_2():
+    from rsradia.hysteresis import *
+
+def test_3():
+    from rsradia.magnets import *

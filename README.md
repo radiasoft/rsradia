@@ -1,11 +1,24 @@
 ### rsradia
+The rsradia package contains utility functions and extensions for the Python version of the code [Radia](https://github.com/ochubar/Radia).
 
-rsradia
+### Quick Installation Instructions
 
-Learn more at https://github.com/radiasoft/rsradia.
+rsradia uses the Python package Pykern to handle installation. You can install Pykern with pip using:
+```bash
+pip install git+https://github.com/radiasoft/pykern
+```
 
-Documentation: http://rsradia.readthedocs.org/en/latest/
+To install rsradia directly with pip:
+```bash
+pip install git+https://github.com/radiasoft/rsradia
+```
 
+Or if you want to download and install this repository to have access to examples:
+```bash
+git clone https://github.com/radiasoft/rsradia
+cd rsradia
+pip install .
+```
 #### License
 
 License: http://www.apache.org/licenses/LICENSE-2.0.html
