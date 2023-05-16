@@ -25,7 +25,7 @@ def _create_point_table(pole_width, pole_separation, pole_height, top_height, le
     :return:
     """
     assert np.any([fillet_base, fillet_height, fillet_radius]) == np.all([fillet_base, fillet_height, fillet_radius]), "fillet height, base, and radius must all be defined"
-    assert np.any([chamfer_base, chamfer_angle]) == np.all([chamfer_base, chamfer_angle]), "chamfer base and angle must both be defined"
+    assert np.any([chamfer_base, chamfer_angle]) == np.all([chamfer_base, chamfer_angle]), f"chamfer base and angle must both be defined. Got {chamfer_base} and {chamfer_angle}"
     if chamfer_angle:
         assert chamfer_angle > 0. and chamfer_angle < 90., "Chamfer angle must between 0 and 90 degrees"
     
