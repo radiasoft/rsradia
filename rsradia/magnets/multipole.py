@@ -130,8 +130,8 @@ def create_multipole(n_poles, thick, width, gap, height, chamfer, tip_coil_sep,
     ht_lower = poletip_frac * height
 
     # create the discretized path that outlines the pole tip cross-section
-    Γ_tip = pole_tip_path(n_poles, width, gap, height, n_curve = 6,
-                          poletip_frac = poletip_frac, yoketip_frac = yoketip_frac)
+    Γ_tip = _pole_tip_path(n_poles, width, gap, height, n_curve = 6,
+                           poletip_frac = poletip_frac, yoketip_frac = yoketip_frac)
 
     # create and segment the lower portion of the (half) pole tip
     g_tip = rad.ObjThckPgn(thick / 4, thick / 2, Γ_tip)
