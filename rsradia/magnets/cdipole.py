@@ -1,11 +1,7 @@
-### cube.py
-### November 2022
-### A simple cubic ferromagnet wrapped with a racetrack coil
 
-from . import TRI_MIN_SIZE, TRI_MAX_SIZE
-from .magnet import _Magnet
+import radia as rad
 
-def create_dipole(gap, thick, width, chamfer, lpp, lap, lha, car, iron,
+def make_cdipole(gap, thick, width, chamfer, lpp, lap, lha, car, iron,
                   rmin, rmax, current,
                   n1, n2, n3, n4, n5, n6, ncr, nca, nsc,
                   circ = True):
@@ -126,15 +122,6 @@ def create_dipole(gap, thick, width, chamfer, lpp, lap, lha, car, iron,
     # and set color
     rad.ObjDrwAtr(yoke, iron_color)
 
-    # add geometry with a name for viewing
-    # rv.add_geometry('pole piece',                   g1)
-    # rv.add_geometry('short vertical segment',       g2)
-    # rv.add_geometry('corner 1',                     g3)
-    # rv.add_geometry('horizontal segment',           g4)
-    # rv.add_geometry('corner 2',                     g5)
-    # rv.add_geometry('vertical segment inside coil', g6)
-    # rv.add_geometry('iron yoke',                  yoke)
-
     # apply symmetry conditions
     rad.TrfZerPerp(yoke, [0, 0, 0], [1, 0, 0])  # across y-z plane, with B parallel to plane
     rad.TrfZerPara(yoke, [0, 0, 0], [0, 0, 1])  # across x-y plane, with B perpendicular to plane
@@ -146,9 +133,6 @@ def create_dipole(gap, thick, width, chamfer, lpp, lap, lha, car, iron,
     coil = rad.ObjRaceTrk(pc, [rmin, rmax], [thick, ly6], hc, nsc, curr_dens)
     # and color
     rad.ObjDrwAtr(coil, coil_color)
-    # rv.add_geometry('coil', coil)
 
     # group yoke and coil together, and return
     return rad.ObjCnt([yoke, coil])
-
-    # end create_dipole(..)

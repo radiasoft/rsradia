@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 
-u""":mod:`magnets` package
-"""
-#
-from .base import *
+from . import base
+from . import geometry
 
-# Import the implemented magnet models
-from .block import Block
-from .H_dipole import HDipole
-#from .simple_dipole import SimpleDipole
+from .block import make_block
+from .dipole import make_dipole
+from .cdipole import make_cdipole

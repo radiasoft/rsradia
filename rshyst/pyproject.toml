@@ -1,0 +1,24 @@
+# -*- coding: utf-8 -*-
+
+[project]
+name = "rshyst"
+version = "0.0.0"
+authors = [{name="RadiaSoft LLC", email="pip@radiasoft.net"},]
+description = "Magnetic hysteresis modeling in Python"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+]
+
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "License :: OSI Approved :: Apache-2.0",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/radiasoft/rsradia"
+"Bug Tracker" = "https://github.com/radiasoft/rsradia/issues"

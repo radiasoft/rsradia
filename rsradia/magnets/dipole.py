@@ -1,8 +1,7 @@
 import radia as rad
 import numpy as np
-from rsradia.magnets import geometry
 
-TRIANGLE_MIN_SIZE, TRIANGLE_MAX_SIZE = 0.5, 1.0
+from rsradia.magnets import base, geometry
 
 def _create_point_table(pole_width, pole_separation, pole_height, top_height, leg_width, gap_height, 
                         bevel_base=0.0, chamfer_base=None, chamfer_angle=None, fillet_base=None, fillet_height=None, fillet_radius=None):
@@ -94,7 +93,7 @@ def _get_all_points_bottom(table):
     return coordinates[::-1]
 
 
-def create_pole(coordinates, center, length, mode=0, triangle_min_size=TRIANGLE_MIN_SIZE, triangle_max_size=TRIANGLE_MAX_SIZE):
+def create_pole(coordinates, center, length, mode=0, TRI_MIN_SIZE=base.TRI_MIN_SIZE, TRI_MAX_SIZE=base.TRI_MAX_SIZE):
     """
     Form geometry for the full pole piece of an H-dipole using radia.ObjMltExtTri.
 
@@ -103,8 +102,8 @@ def create_pole(coordinates, center, length, mode=0, triangle_min_size=TRIANGLE_
     :param length: (float) Length of the dipole in x
     :param mode: (int) If 0 (default) then the pole piece is divisioned into polygons based on point ordering from
     coordinate list. If != 0 then a Triangular mesh is automatically generated.
-    :param triangle_min_size: (float) Only used if mode != 0. Sets the minimum triangle area for automatic division.
-    :param triangle_max_size: (float) Only used if mode != 0. Sets the maximum triangle area for automatic division.
+    :param TRI_MIN_SIZE: (float) Only used if mode != 0. Sets the minimum triangle area for automatic division.
+    :param TRI_MAX_SIZE: (float) Only used if mode != 0. Sets the maximum triangle area for automatic division.
     :return: Radia object containing top and bottom pole pieces.
     """
     x = center
@@ -114,7 +113,7 @@ def create_pole(coordinates, center, length, mode=0, triangle_min_size=TRIANGLE_
     if not mode:
         pole = rad.ObjMltExtTri(x, lx, coordinates, pole_sub)
     else:
-        str_param = 'ki->Numb,TriAngMin->' + str(triangle_min_size) + ',TriAreaMax->' + str(triangle_max_size)
+        str_param = 'ki->Numb,TriAngMin->' + str(TRI_MIN_SIZE) + ',TriAreaMax->' + str(TRI_MAX_SIZE)
         pole = rad.ObjMltExtTri(x, lx, coordinates, pole_sub, 'x', [0., 0., 0.], str_param)
     return pole
 
@@ -132,8 +131,8 @@ def make_racetrack_coil(center, radii, sizes, segments=15, current=1):
     return rad.ObjRaceTrk(center, radii, sizes[:2], sizes[2], segments, current, 'man', 'z')
 
 
-def make_dipole(pole_dimensions, center, length, current=-10000,
-                trimesh_mode=0, triangle_min_size=TRIANGLE_MIN_SIZE, triangle_max_size=TRIANGLE_MAX_SIZE, longitudinal_divisions=4):
+def make_dipole(pole_dimensions, center, length, current=-10000, radmat=base.IRONMAT,
+                trimesh_mode=0, TRI_MIN_SIZE=base.TRI_MIN_SIZE, TRI_MAX_SIZE=base.TRI_MAX_SIZE, longitudinal_divisions=4):
     """
     Construct a complete H-dipole made of iron.
     :param pole_dimensions: (dict) Parameters describing geometry of pole piece. See `_create_point_table`.
@@ -154,13 +153,12 @@ def make_dipole(pole_dimensions, center, length, current=-10000,
     top_coodinates = _get_all_points_top(table_quadrant_one)
     bottom_coordinates = _get_all_points_bottom(top_coodinates)
 
-    top_pole = create_pole(top_coodinates, center, length, mode=trimesh_mode, triangle_min_size=triangle_min_size, triangle_max_size=triangle_max_size)
-    bottom_pole = create_pole(bottom_coordinates, center, length, mode=trimesh_mode, triangle_min_size=triangle_min_size, triangle_max_size=triangle_max_size)
+    top_pole = create_pole(top_coodinates, center, length, mode=trimesh_mode, TRI_MIN_SIZE=TRI_MIN_SIZE, TRI_MAX_SIZE=TRI_MAX_SIZE)
+    bottom_pole = create_pole(bottom_coordinates, center, length, mode=trimesh_mode, TRI_MIN_SIZE=TRI_MIN_SIZE, TRI_MAX_SIZE=TRI_MAX_SIZE)
 
     # Material for the poles (uses Iron)
-    ironmat = rad.MatSatIsoFrm([20000, 2], [0.1, 2], [0.1, 2])
-    rad.MatApl(top_pole, ironmat)
-    rad.MatApl(bottom_pole, ironmat)
+    rad.MatApl(top_pole, radmat)
+    rad.MatApl(bottom_pole, radmat)
 
     # Coils
     coil_outer_radius = pole_dimensions['pole_separation'] * coil_or_factor
